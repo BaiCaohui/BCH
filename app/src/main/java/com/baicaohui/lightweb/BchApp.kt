@@ -14,6 +14,9 @@ class BchApp : Application() {
 
     val adBlocker: AdBlocker by lazy { AdBlocker.fromResources(this) }
 
+    @Volatile
+    var pendingUrl: String? = null
+
     override fun onCreate() {
         super.onCreate()
         themePrefs = ThemePrefs.create(this)

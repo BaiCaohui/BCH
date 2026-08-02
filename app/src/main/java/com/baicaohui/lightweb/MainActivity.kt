@@ -15,6 +15,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        (application as BchApp).pendingUrl = intent?.data?.toString()
         setContent {
             val app = application as BchApp
             val themeConfig by app.themePrefs.config.collectAsStateWithLifecycle(
