@@ -1,9 +1,9 @@
-# 轻网 LightWeb —— Android 浏览器设计文档
+# BCH（白草灰）—— Android 浏览器设计文档
 
 - 日期：2026-08-03
 - 状态：v2 设计已确认，待用户审阅本文档后进入实施计划
 - 包名：`com.baicaohui.lightweb`
-- 应用名：轻网（LightWeb，暂定）
+- 应用名：BCH（中文名：白草灰；桌面图标显示 BCH，关于页显示「BCH 白草灰」）
 - 工程位置：`E:\Opencode workspace\BaiCaohui workspace`（全新独立工程，非现有 EPUB 工程内）
 - 定位：**轻量内核 + 高可定制**，Material 3 设计，内置可自定义主页
 
@@ -89,7 +89,7 @@ Compose 的代价是 APK 增加约 3–4MB，换来运行时换肤与主页组�
 - **位置**：顶部（默认）/ 底部两种模式
 - **按钮**：返回、前进、刷新/停止、标签页计数，逐个可显示/隐藏
 - **自动隐藏**：页面滚动时隐藏工具栏（开关）
-- **底栏模式**：切换为 MD3 NavigationBar（主页/标签/书签/历史/设置）+ 地址栏固定顶部或底部
+- **底栏模式**：MD3 NavigationBar（主页/标签/书签/历史/设置）**默认开启**，可关闭；地址栏可固定顶部或底部
 - **地址栏行为**：点击全选（开关）、显示完整 URL 或仅域名+安全锁
 
 ### 5.4 浏览与隐私自定义
@@ -112,7 +112,7 @@ Compose 的代价是 APK 增加约 3–4MB，换来运行时换肤与主页组�
 
 ```text
 com.baicaohui.lightweb
-├── LightWebApp.kt              // Application：手工 DI 容器
+├── BchApp.kt                   // Application：手工 DI 容器
 ├── MainActivity.kt             // 单 Activity + NavHost
 ├── browser/                    // 浏览器内核（不依赖 UI）
 │   ├── BrowserWebView.kt       // WebView 封装：配置锁/生命周期/状态
@@ -232,7 +232,7 @@ SiteSetting(host PK, jsEnabled?, adLevel?, desktopMode?, cookiePref?, zoom)
 
 | 页面 | 核心内容 |
 |---|---|
-| BrowserScreen | MD3 TopAppBar（按钮可隐藏）+ 胶囊地址栏（内嵌 2dp 进度条）+ WebView；更多菜单：新标签/刷新/书签/历史/分享/桌面版/设置 |
+| BrowserScreen | MD3 TopAppBar（按钮可隐藏）+ 胶囊地址栏（内嵌 2dp 进度条）+ WebView；底部默认显示 MD3 NavigationBar（可关闭）；更多菜单：新标签/刷新/书签/历史/分享/桌面版/设置 |
 | HomeScreen | 组件化主页：搜索胶囊 → 快捷拨号网格 → 最近访问/书签/时钟；右上编辑按钮；背景按配置渲染 |
 | HomeEditScreen | 组件管理：开关、拖动排序、列数、背景选择器（色板/渐变/相册）、遮罩滑杆 |
 | TabSwitcherScreen | 2 列卡片网格（favicon+标题+域名）、当前页主题色描边、右滑关闭、长按菜单、FAB「+ 新建标签」 |
@@ -320,6 +320,4 @@ SiteSetting(host PK, jsEnabled?, adLevel?, desktopMode?, cookiePref?, zoom)
 
 ## 13. 待确认项
 
-- 应用中文名「轻网」是否采用（当前为暂定）
-- 默认强调色 `#2B7FFF` 是否采用
-- 底栏模式默认关闭、由用户按需开启
+- 默认强调色 `#2B7FFF`（青蓝）是否采用（尚未收到明确确认，暂定此色）
