@@ -1,0 +1,5 @@
+# 基础规则：常用广告/统计域名
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+adservice.google.com

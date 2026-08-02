@@ -1,0 +1,6 @@
+# 严格规则：额外拦截的广告联盟
+adnxs.com
+rubiconproject.com
+criteo.com
+taboola.com
+outbrain.com
