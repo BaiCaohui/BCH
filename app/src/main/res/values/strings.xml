@@ -151,4 +151,5 @@
     <string name="bottom_nav_labels">底部导航显示名称</string>
     <string name="add_bookmark">添加到书签</string>
     <string name="bookmark_added">已添加到书签</string>
+    <string name="tab_preview_enabled">标签页页面预览（可能影响动态网页）</string>
 </resources>

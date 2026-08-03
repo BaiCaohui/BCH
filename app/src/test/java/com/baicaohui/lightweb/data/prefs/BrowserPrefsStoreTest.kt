@@ -35,6 +35,7 @@ class BrowserPrefsStoreTest {
                 showReload = false,
                 autoHideToolbar = true,
                 showBottomBarLabels = true,
+                tabPreviewEnabled = true,
             )
         }
         val prefs = store.prefs.first()
@@ -46,5 +47,6 @@ class BrowserPrefsStoreTest {
         assertEquals(false, prefs.showReload)
         assertEquals(true, prefs.autoHideToolbar)
         assertEquals(true, prefs.showBottomBarLabels)
+        assertEquals(true, prefs.tabPreviewEnabled)
     }
 }

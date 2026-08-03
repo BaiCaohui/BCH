@@ -28,6 +28,7 @@ data class BrowserPrefs(
     val showReload: Boolean = true,
     val autoHideToolbar: Boolean = false,
     val showBottomBarLabels: Boolean = false,
+    val tabPreviewEnabled: Boolean = false,
 ) {
     companion object {
         val DEFAULT = BrowserPrefs()

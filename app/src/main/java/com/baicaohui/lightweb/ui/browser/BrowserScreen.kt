@@ -109,7 +109,7 @@ fun BrowserScreen(
         override fun onPageFinished(url: String) {
             viewModel.onPageFinished(tabId, url)
             updateNavState()
-            if (tabId == viewModel.currentId.value) {
+            if (tabId == viewModel.currentId.value && app.currentBrowserPrefs.tabPreviewEnabled) {
                 scope.launch {
                     delay(200)
                     val wv = webViewStore.get(tabId) ?: return@launch

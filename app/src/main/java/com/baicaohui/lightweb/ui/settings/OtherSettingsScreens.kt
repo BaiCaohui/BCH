@@ -202,6 +202,10 @@ fun BrowseSettingsScreen() {
             stringResource(R.string.browse_js_default),
             prefs.defaultJsEnabled,
         ) { enabled -> update { it.copy(defaultJsEnabled = enabled) } }
+        SettingSwitch(
+            stringResource(R.string.tab_preview_enabled),
+            prefs.tabPreviewEnabled,
+        ) { enabled -> update { it.copy(tabPreviewEnabled = enabled) } }
     }
 }
 
