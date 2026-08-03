@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
@@ -161,6 +164,9 @@ fun BchAppRoot() {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_reload)) },
                             enabled = currentTabId != null,
+                            leadingIcon = {
+                                Icon(BchIcons.Refresh, contentDescription = null)
+                            },
                             onClick = {
                                 menuOpen = false
                                 app.webViewStore.get(currentTabId ?: return@DropdownMenuItem)?.reload()
@@ -168,6 +174,9 @@ fun BchAppRoot() {
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.nav_bookmarks)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Star, contentDescription = null)
+                            },
                             onClick = {
                                 menuOpen = false
                                 navigateTo(BchRoute.BOOKMARKS.route)
@@ -175,6 +184,9 @@ fun BchAppRoot() {
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.nav_history)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.DateRange, contentDescription = null)
+                            },
                             onClick = {
                                 menuOpen = false
                                 navigateTo(BchRoute.HISTORY.route)
@@ -182,6 +194,9 @@ fun BchAppRoot() {
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.nav_settings)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Settings, contentDescription = null)
+                            },
                             onClick = {
                                 menuOpen = false
                                 navController.navigate(BchRoute.SETTINGS.route) {
