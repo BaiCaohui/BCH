@@ -27,6 +27,13 @@ enum class BchRoute(
     HISTORY("history", R.string.nav_history, Icons.Filled.DateRange, true),
     SETTINGS("settings", R.string.nav_settings, Icons.Filled.Settings, true),
     HOME_EDIT("homeEdit", R.string.home_edit, null, false),
+    APPEARANCE("appearance", R.string.settings_appearance, null, false),
+    TOOLBAR_SETTINGS("toolbarSettings", R.string.settings_toolbar, null, false),
+    SEARCH_ENGINE("searchEngine", R.string.settings_search_engine, null, false),
+    BROWSE_SETTINGS("browseSettings", R.string.settings_browsing, null, false),
+    PRIVACY("privacy", R.string.settings_privacy, null, false),
+    SITE_SETTINGS("siteSettings", R.string.settings_site_settings, null, false),
+    ABOUT("about", R.string.settings_about, null, false),
 }
 
 /** M1 用到的工具栏图标，集中声明避免散落 import。 */

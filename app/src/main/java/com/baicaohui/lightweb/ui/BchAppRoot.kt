@@ -25,6 +25,14 @@ import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.history.HistoryScreen
 import com.baicaohui.lightweb.ui.home.HomeEditScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
+import com.baicaohui.lightweb.ui.settings.AboutScreen
+import com.baicaohui.lightweb.ui.settings.AppearanceScreen
+import com.baicaohui.lightweb.ui.settings.BrowseSettingsScreen
+import com.baicaohui.lightweb.ui.settings.PrivacyScreen
+import com.baicaohui.lightweb.ui.settings.SearchEngineScreen
+import com.baicaohui.lightweb.ui.settings.SettingsScreen
+import com.baicaohui.lightweb.ui.settings.SiteSettingsScreen
+import com.baicaohui.lightweb.ui.settings.ToolbarSettingsScreen
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 
 @Composable
@@ -136,8 +144,15 @@ fun BchAppRoot() {
                 )
             }
             composable(BchRoute.SETTINGS.route) {
-                PlaceholderScreen(text = stringResource(R.string.settings_placeholder))
+                SettingsScreen(onNavigate = { route -> navController.navigate(route) })
             }
+            composable(BchRoute.APPEARANCE.route) { AppearanceScreen() }
+            composable(BchRoute.TOOLBAR_SETTINGS.route) { ToolbarSettingsScreen() }
+            composable(BchRoute.SEARCH_ENGINE.route) { SearchEngineScreen() }
+            composable(BchRoute.BROWSE_SETTINGS.route) { BrowseSettingsScreen() }
+            composable(BchRoute.PRIVACY.route) { PrivacyScreen() }
+            composable(BchRoute.SITE_SETTINGS.route) { SiteSettingsScreen() }
+            composable(BchRoute.ABOUT.route) { AboutScreen() }
         }
     }
 }

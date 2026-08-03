@@ -107,4 +107,6 @@ object TonalPaletteGenerator {
         }
         return Color(red = r + m, green = g + m, blue = b + m)
     }
+
+    fun fromHsvColor(h: Float, s: Float, v: Float): Color = fromHsv(h, s, v)
 }
