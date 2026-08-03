@@ -34,6 +34,7 @@ class BrowserPrefsStoreTest {
                 toolbarPosition = ToolbarPosition.BOTTOM,
                 showReload = false,
                 autoHideToolbar = true,
+                showBottomBarLabels = true,
             )
         }
         val prefs = store.prefs.first()
@@ -44,5 +45,6 @@ class BrowserPrefsStoreTest {
         assertEquals(ToolbarPosition.BOTTOM, prefs.toolbarPosition)
         assertEquals(false, prefs.showReload)
         assertEquals(true, prefs.autoHideToolbar)
+        assertEquals(true, prefs.showBottomBarLabels)
     }
 }

@@ -1,13 +1,22 @@
 package com.baicaohui.lightweb.ui
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -18,8 +27,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
+import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.TabStatus
+import com.baicaohui.lightweb.data.prefs.BrowserPrefs
+import com.baicaohui.lightweb.ui.navigation.BchIcons
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
@@ -43,45 +55,128 @@ fun BchAppRoot() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val bottomRoutes = BchRoute.entries.filter { it.inBottomBar }
+    val browserPrefs by app.browserPrefsStore.prefs.collectAsStateWithLifecycle(initialValue = BrowserPrefs.DEFAULT)
+    val navState by app.navigationState.collectAsStateWithLifecycle()
+    val currentTabId by app.tabManager.currentId.collectAsStateWithLifecycle()
+    var menuOpen by remember { mutableStateOf(false) }
+
+    fun goHome() {
+        val current = app.tabManager.current
+        val onHomePage = current == null ||
+            (current.url.isBlank() && current.status == TabStatus.EMPTY)
+        if (!onHomePage) app.tabManager.newTab("")
+        navController.navigate(BchRoute.BROWSER.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    fun navigateTo(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
             NavigationBar {
-                bottomRoutes.forEach { dest ->
-                    NavigationBarItem(
-                        selected = if (dest == BchRoute.HOME) {
-                            currentRoute == BchRoute.BROWSER.route
-                        } else {
-                            currentRoute == dest.route
-                        },
-                        onClick = {
-                            if (dest == BchRoute.HOME) {
-                                val current = app.tabManager.current
-                                val onHomePage = current == null ||
-                                    (current.url.isBlank() && current.status == TabStatus.EMPTY)
-                                if (!onHomePage) app.tabManager.newTab("")
-                                navController.navigate(BchRoute.BROWSER.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            } else {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = dest.icon!!,
-                                contentDescription = stringResource(dest.labelRes),
-                            )
-                        },
-                        label = { Text(stringResource(dest.labelRes)) },
-                    )
+                IconButton(
+                    onClick = {
+                        app.webViewStore.get(currentTabId ?: return@IconButton)?.goBack()
+                        val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
+                        app.navigationState.value = NavigationState(
+                            canGoBack = wv?.canGoBack() == true,
+                            canGoForward = wv?.canGoForward() == true,
+                        )
+                    },
+                    enabled = navState.canGoBack,
+                ) {
+                    Icon(BchIcons.Back, contentDescription = stringResource(R.string.action_back))
+                }
+                IconButton(
+                    onClick = {
+                        app.webViewStore.get(currentTabId ?: return@IconButton)?.goForward()
+                        val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
+                        app.navigationState.value = NavigationState(
+                            canGoBack = wv?.canGoBack() == true,
+                            canGoForward = wv?.canGoForward() == true,
+                        )
+                    },
+                    enabled = navState.canGoForward,
+                ) {
+                    Icon(BchIcons.Forward, contentDescription = stringResource(R.string.action_forward))
+                }
+                NavigationBarItem(
+                    selected = currentRoute == BchRoute.BROWSER.route,
+                    onClick = { goHome() },
+                    icon = {
+                        Icon(
+                            imageVector = BchRoute.HOME.icon!!,
+                            contentDescription = stringResource(BchRoute.HOME.labelRes),
+                        )
+                    },
+                    label = if (browserPrefs.showBottomBarLabels) {
+                        { Text(stringResource(BchRoute.HOME.labelRes)) }
+                    } else {
+                        null
+                    },
+                )
+                NavigationBarItem(
+                    selected = currentRoute == BchRoute.TABS.route,
+                    onClick = { navigateTo(BchRoute.TABS.route) },
+                    icon = {
+                        Icon(
+                            imageVector = BchRoute.TABS.icon!!,
+                            contentDescription = stringResource(BchRoute.TABS.labelRes),
+                        )
+                    },
+                    label = if (browserPrefs.showBottomBarLabels) {
+                        { Text(stringResource(BchRoute.TABS.labelRes)) }
+                    } else {
+                        null
+                    },
+                )
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = stringResource(R.string.bottom_menu_more),
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_reload)) },
+                            enabled = currentTabId != null,
+                            onClick = {
+                                menuOpen = false
+                                app.webViewStore.get(currentTabId ?: return@DropdownMenuItem)?.reload()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nav_bookmarks)) },
+                            onClick = {
+                                menuOpen = false
+                                navigateTo(BchRoute.BOOKMARKS.route)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nav_history)) },
+                            onClick = {
+                                menuOpen = false
+                                navigateTo(BchRoute.HISTORY.route)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.nav_settings)) },
+                            onClick = {
+                                menuOpen = false
+                                navigateTo(BchRoute.SETTINGS.route)
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -94,7 +189,6 @@ fun BchAppRoot() {
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(
                     initialUrl = app.pendingUrl.also { app.pendingUrl = null },
-                    onOpenTabs = { navController.navigate(BchRoute.TABS.route) },
                 )
             }
             composable(BchRoute.HOME_EDIT.route) { HomeEditScreen() }

@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baicaohui.lightweb.BchApp
+import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.DownloadHandler
 import com.baicaohui.lightweb.browser.PageCapture
@@ -57,7 +58,6 @@ private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 @Composable
 fun BrowserScreen(
     initialUrl: String? = null,
-    onOpenTabs: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as BchApp
@@ -81,12 +81,21 @@ fun BrowserScreen(
     val scope = rememberCoroutineScope()
     val online by app.networkMonitor.online.collectAsStateWithLifecycle(initialValue = true)
 
+    fun updateNavState() {
+        val wv = currentId?.let { webViewStore.get(it) }
+        app.navigationState.value = NavigationState(
+            canGoBack = wv?.canGoBack() == true,
+            canGoForward = wv?.canGoForward() == true,
+        )
+    }
+
     fun tabCallbacks(tabId: Long) = object : WebCallbacks {
         override fun onProgress(progress: Int) = viewModel.onProgress(tabId, progress)
 
         override fun onPageStarted(url: String) {
             viewModel.onPageStarted(tabId, url)
             webViewStore.markLoaded(tabId, url)
+            updateNavState()
             val host = UrlSecurity.extractHost(url)
             if (host != null) {
                 scope.launch {
@@ -99,6 +108,7 @@ fun BrowserScreen(
 
         override fun onPageFinished(url: String) {
             viewModel.onPageFinished(tabId, url)
+            updateNavState()
             if (tabId == viewModel.currentId.value) {
                 scope.launch {
                     delay(200)
@@ -160,6 +170,7 @@ fun BrowserScreen(
 
     LaunchedEffect(activeTab?.id) {
         addressText = activeTab?.url.orEmpty()
+        updateNavState()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -194,18 +205,6 @@ fun BrowserScreen(
                         )
                     }
                 }
-                BrowserToolbar(
-                    canGoBack = canGoBack,
-                    canGoForward = currentWebView?.canGoForward() == true,
-                    tabCount = tabs.size,
-                    showBack = browserPrefs.showBack,
-                    showForward = browserPrefs.showForward,
-                    showReload = browserPrefs.showReload,
-                    onBack = { currentWebView?.goBack() },
-                    onForward = { currentWebView?.goForward() },
-                    onReload = { currentWebView?.reload() },
-                    onTabs = onOpenTabs,
-                )
                 AddressBar(
                     value = addressText,
                     onValueChange = { addressText = it },

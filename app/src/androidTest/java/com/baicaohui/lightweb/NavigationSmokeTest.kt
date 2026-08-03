@@ -1,6 +1,7 @@
 package com.baicaohui.lightweb
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -14,9 +15,11 @@ class NavigationSmokeTest {
 
     @Test
     fun bottomBarSwitchesDestinations() {
+        composeRule.onNodeWithContentDescription("更多").performClick()
         composeRule.onNodeWithText("历史").performClick()
         composeRule.onNodeWithText("暂无浏览历史").assertIsDisplayed()
 
+        composeRule.onNodeWithContentDescription("更多").performClick()
         composeRule.onNodeWithText("书签").performClick()
         composeRule.onNodeWithText("暂无书签").assertIsDisplayed()
     }

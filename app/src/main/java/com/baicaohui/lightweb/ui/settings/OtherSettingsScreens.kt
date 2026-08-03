@@ -93,6 +93,12 @@ fun ToolbarSettingsScreen() {
             stringResource(R.string.toolbar_auto_hide),
             prefs.autoHideToolbar,
         ) { enabled -> update { it.copy(autoHideToolbar = enabled) } }
+        Spacer(Modifier.height(12.dp))
+        SectionTitle(stringResource(R.string.toolbar_buttons))
+        SettingSwitch(
+            stringResource(R.string.bottom_nav_labels),
+            prefs.showBottomBarLabels,
+        ) { enabled -> update { it.copy(showBottomBarLabels = enabled) } }
     }
 }
 

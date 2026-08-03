@@ -23,6 +23,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+
+data class NavigationState(
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
+)
 
 class BchApp : Application() {
 
@@ -54,6 +60,8 @@ class BchApp : Application() {
     @Volatile
     var currentBrowserPrefs: BrowserPrefs = BrowserPrefs.DEFAULT
         private set
+
+    val navigationState = MutableStateFlow(NavigationState())
 
     val webViewStore by lazy {
         WebViewStore(adBlocker) {
