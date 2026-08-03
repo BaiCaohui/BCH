@@ -42,12 +42,14 @@ class BchWebViewClient(
     override fun shouldInterceptRequest(
         view: WebView,
         request: WebResourceRequest,
-    ): WebResourceResponse? =
-        if (adBlocker.isBlocked(request.url.toString(), adLevel())) {
+    ): WebResourceResponse? {
+        if (request.isForMainFrame) return null
+        return if (adBlocker.isBlocked(request.url.toString(), adLevel())) {
             WebResourceResponse("text/plain", "utf-8", null)
         } else {
             null
         }
+    }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
         url?.let { callbacks.onPageStarted(it) }
