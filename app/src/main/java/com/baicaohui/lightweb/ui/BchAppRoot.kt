@@ -22,6 +22,7 @@ import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
+import com.baicaohui.lightweb.ui.history.HistoryScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 
@@ -120,7 +121,16 @@ fun BchAppRoot() {
                 )
             }
             composable(BchRoute.HISTORY.route) {
-                PlaceholderScreen(text = stringResource(R.string.empty_history))
+                HistoryScreen(
+                    onOpenUrl = { url ->
+                        app.pendingUrl = url
+                        navController.navigate(BchRoute.BROWSER.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
             composable(BchRoute.SETTINGS.route) {
                 PlaceholderScreen(text = stringResource(R.string.settings_placeholder))

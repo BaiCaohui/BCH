@@ -55,4 +55,13 @@
     <string name="bookmarks_import_failed">导入失败：文件格式不正确</string>
     <string name="bookmarks_folder_created">文件夹已创建</string>
     <string name="bookmarks_more">更多</string>
+    <string name="history_title">历史</string>
+    <string name="history_search">搜索历史</string>
+    <string name="history_today">今天</string>
+    <string name="history_yesterday">昨天</string>
+    <string name="history_earlier">更早</string>
+    <string name="history_clear">清空</string>
+    <string name="history_confirm_clear_title">清空历史？</string>
+    <string name="history_confirm_clear_text">将删除全部浏览历史，此操作不可恢复。</string>
+    <string name="history_delete">删除此条</string>
 </resources>
