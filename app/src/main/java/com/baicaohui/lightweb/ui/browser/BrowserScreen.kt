@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -177,7 +178,7 @@ fun BrowserScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         val topBar = @Composable {
-            Column {
+            Column(modifier = Modifier.statusBarsPadding()) {
                 if (!online) {
                     Surface(color = MaterialTheme.colorScheme.errorContainer) {
                         Text(

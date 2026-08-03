@@ -89,7 +89,7 @@ fun BchAppRoot() {
         NavHost(
             navController = navController,
             startDestination = BchRoute.BROWSER.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(
