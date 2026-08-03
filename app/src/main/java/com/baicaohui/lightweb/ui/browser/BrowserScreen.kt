@@ -159,6 +159,7 @@ fun BrowserScreen(
     LaunchedEffect(tabs) {
         val activeIds = tabs.map { it.id }.toSet()
         webViewStore.destroyRemoved(activeIds)
+        webViewStore.trim(activeIds, keepId = currentId, limit = 8)
         app.tabThumbnailStore.retain(activeIds)
     }
 
@@ -170,6 +171,9 @@ fun BrowserScreen(
 
     LaunchedEffect(activeTab?.id) {
         addressText = activeTab?.url.orEmpty()
+        currentId?.let { webViewStore.get(it) }
+        val activeIds = tabs.map { it.id }.toSet()
+        webViewStore.trim(activeIds, keepId = currentId, limit = 8)
         updateNavState()
     }
 

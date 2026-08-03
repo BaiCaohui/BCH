@@ -12,7 +12,7 @@ object PageCapture {
 
     private const val THUMB_WIDTH = 360
     private const val MAX_HEIGHT = 2400
-    private const val MAX_CAPTURE_CONTENT = 8000
+    private const val MAX_CAPTURE_CONTENT = 4000
     private const val MAX_SEGMENTS = 6
     private const val SEGMENT_DELAY_MS = 20L
     private const val SETTLE_DELAY_MS = 600L
@@ -27,8 +27,12 @@ object PageCapture {
             return@withContext null
         }
         val scale = THUMB_WIDTH.toFloat() / width
-        // 视口内一屏或超高动态页面：只截当前视口，绝不滚动页面，避免破坏动态内容加载
-        if (contentHeight <= viewHeight || contentHeight > MAX_CAPTURE_CONTENT) {
+        // 超高动态页面（如 B 站）：完全跳过截图，不触碰页面，避免破坏懒加载
+        if (contentHeight > MAX_CAPTURE_CONTENT) {
+            return@withContext null
+        }
+        // 一屏以内的页面：只截当前视口
+        if (contentHeight <= viewHeight) {
             return@withContext captureViewport(webView, viewHeight, scale)
         }
         val captureHeight = minOf(contentHeight, (MAX_HEIGHT / scale).toInt())
