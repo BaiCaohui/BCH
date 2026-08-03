@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
 
 data class NavigationState(
     val canGoBack: Boolean = false,
@@ -69,7 +70,12 @@ class BchApp : Application() {
         }
     }
 
-    val tabThumbnailStore = TabThumbnailStore()
+    val tabThumbnailStore: TabThumbnailStore by lazy {
+        TabThumbnailStore(
+            thumbnailDir = File(filesDir, "thumbnails"),
+            ioScope = appScope,
+        )
+    }
 
     val networkMonitor by lazy { NetworkMonitor(this) }
 
@@ -82,6 +88,9 @@ class BchApp : Application() {
         networkMonitor.start()
         val sessionStore = SessionStore(getSharedPreferences("session", MODE_PRIVATE))
         sessionStore.load()?.let { tabManager.restore(it) }
+        appScope.launch {
+            tabThumbnailStore.loadAll(tabManager.tabs.value.map { it.id }.toSet())
+        }
         appScope.launch {
             tabManager.tabs.collect { tabManager.snapshots().let(sessionStore::save) }
         }
