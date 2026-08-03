@@ -1,7 +1,10 @@
 package com.baicaohui.lightweb.ui.tabs
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,6 +54,7 @@ import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 fun TabSwitcherScreen(
     tabs: List<Tab>,
     currentId: Long?,
+    thumbnails: Map<Long, Bitmap> = emptyMap(),
     onSelect: (Long) -> Unit,
     onClose: (Long) -> Unit,
     onNewTab: () -> Unit,
@@ -82,6 +88,7 @@ fun TabSwitcherScreen(
                         TabCard(
                             tab = tab,
                             selected = tab.id == currentId,
+                            thumbnail = thumbnails[tab.id],
                             onSelect = { onSelect(tab.id) },
                             onClose = { onClose(tab.id) },
                         )
@@ -103,6 +110,7 @@ fun TabSwitcherScreen(
 private fun TabCard(
     tab: Tab,
     selected: Boolean,
+    thumbnail: Bitmap?,
     onSelect: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -121,20 +129,37 @@ private fun TabCard(
         ),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = tab.title.ifBlank { UrlSecurity.extractHost(tab.url) ?: tab.url.ifBlank { "新标签页" } },
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = UrlSecurity.extractHost(tab.url) ?: tab.url,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    if (thumbnail != null) {
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = tab.title.ifBlank { UrlSecurity.extractHost(tab.url) ?: tab.url.ifBlank { "新标签页" } },
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = UrlSecurity.extractHost(tab.url) ?: tab.url,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             IconButton(
                 onClick = onClose,

@@ -6,6 +6,7 @@ import android.webkit.CookieManager
 import com.baicaohui.lightweb.browser.SessionStore
 import com.baicaohui.lightweb.browser.AdBlocker
 import com.baicaohui.lightweb.browser.TabManager
+import com.baicaohui.lightweb.browser.TabThumbnailStore
 import com.baicaohui.lightweb.browser.WebViewStore
 import com.baicaohui.lightweb.browser.AdLevel
 import com.baicaohui.lightweb.data.db.AppDatabase
@@ -59,6 +60,8 @@ class BchApp : Application() {
             AdLevel.valueOf(currentBrowserPrefs.adLevel)
         }
     }
+
+    val tabThumbnailStore = TabThumbnailStore()
 
     val networkMonitor by lazy { NetworkMonitor(this) }
 

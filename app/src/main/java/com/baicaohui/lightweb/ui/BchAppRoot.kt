@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
+import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
@@ -56,7 +57,10 @@ fun BchAppRoot() {
                         },
                         onClick = {
                             if (dest == BchRoute.HOME) {
-                                app.tabManager.newTab("")
+                                val current = app.tabManager.current
+                                val onHomePage = current == null ||
+                                    (current.url.isBlank() && current.status == TabStatus.EMPTY)
+                                if (!onHomePage) app.tabManager.newTab("")
                                 navController.navigate(BchRoute.BROWSER.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
@@ -97,9 +101,11 @@ fun BchAppRoot() {
             composable(BchRoute.TABS.route) {
                 val tabs by app.tabManager.tabs.collectAsStateWithLifecycle()
                 val currentId by app.tabManager.currentId.collectAsStateWithLifecycle()
+                val thumbnails by app.tabThumbnailStore.thumbnails.collectAsStateWithLifecycle()
                 TabSwitcherScreen(
                     tabs = tabs,
                     currentId = currentId,
+                    thumbnails = thumbnails,
                     onSelect = { id ->
                         app.tabManager.select(id)
                         navController.navigate(BchRoute.BROWSER.route) { launchSingleTop = true }

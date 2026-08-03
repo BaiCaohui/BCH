@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.DownloadHandler
+import com.baicaohui.lightweb.browser.PageCapture
 import com.baicaohui.lightweb.browser.PermissionMapping
 import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabStatus
@@ -47,6 +48,7 @@ import com.baicaohui.lightweb.browser.WebCallbacks
 import com.baicaohui.lightweb.data.prefs.ToolbarPosition
 import com.baicaohui.lightweb.ui.components.ErrorPage
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 
@@ -93,7 +95,16 @@ fun BrowserScreen(
             if (tabId == viewModel.currentId.value) addressText = url
         }
 
-        override fun onPageFinished(url: String) = viewModel.onPageFinished(tabId, url)
+        override fun onPageFinished(url: String) {
+            viewModel.onPageFinished(tabId, url)
+            if (tabId == viewModel.currentId.value) {
+                scope.launch {
+                    delay(200)
+                    val wv = webViewStore.get(tabId) ?: return@launch
+                    PageCapture.capture(wv)?.let { app.tabThumbnailStore.put(tabId, it) }
+                }
+            }
+        }
 
         override fun onTitleChanged(title: String) = viewModel.onTitle(tabId, title)
 
@@ -134,7 +145,9 @@ fun BrowserScreen(
     }
 
     LaunchedEffect(tabs) {
-        webViewStore.destroyRemoved(tabs.map { it.id }.toSet())
+        val activeIds = tabs.map { it.id }.toSet()
+        webViewStore.destroyRemoved(activeIds)
+        app.tabThumbnailStore.retain(activeIds)
     }
 
     LaunchedEffect(Unit) {
