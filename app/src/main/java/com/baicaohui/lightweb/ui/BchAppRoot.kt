@@ -184,7 +184,10 @@ fun BchAppRoot() {
                             text = { Text(stringResource(R.string.nav_settings)) },
                             onClick = {
                                 menuOpen = false
-                                navigateTo(BchRoute.SETTINGS.route)
+                                navController.navigate(BchRoute.SETTINGS.route) {
+                                    popUpTo(navController.graph.findStartDestination().id)
+                                    launchSingleTop = true
+                                }
                             },
                         )
                     }
