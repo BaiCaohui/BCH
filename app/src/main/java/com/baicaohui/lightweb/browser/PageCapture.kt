@@ -12,10 +12,14 @@ object PageCapture {
 
     private const val THUMB_WIDTH = 360
     private const val MAX_HEIGHT = 2400
+    private const val MAX_CAPTURE_CONTENT = 8000
+    private const val MAX_SEGMENTS = 6
     private const val SEGMENT_DELAY_MS = 20L
+    private const val SETTLE_DELAY_MS = 600L
 
     suspend fun capture(webView: WebView): Bitmap? = withContext(Dispatchers.Main) {
         if (!webView.isAttachedToWindow) return@withContext null
+        delay(SETTLE_DELAY_MS)
         val width = webView.width
         val viewHeight = webView.height
         val contentHeight = webView.contentHeight
@@ -23,6 +27,10 @@ object PageCapture {
             return@withContext null
         }
         val scale = THUMB_WIDTH.toFloat() / width
+        // 视口内一屏或超高动态页面：只截当前视口，绝不滚动页面，避免破坏动态内容加载
+        if (contentHeight <= viewHeight || contentHeight > MAX_CAPTURE_CONTENT) {
+            return@withContext captureViewport(webView, viewHeight, scale)
+        }
         val captureHeight = minOf(contentHeight, (MAX_HEIGHT / scale).toInt())
         val bitmapHeight = (captureHeight * scale).toInt().coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(THUMB_WIDTH, bitmapHeight, Bitmap.Config.ARGB_8888)
@@ -30,7 +38,8 @@ object PageCapture {
         canvas.scale(scale, scale)
         val originalY = webView.scrollY
         var y = 0
-        while (y < captureHeight) {
+        var segments = 0
+        while (y < captureHeight && segments < MAX_SEGMENTS) {
             webView.scrollTo(0, y)
             webView.invalidate()
             delay(SEGMENT_DELAY_MS)
@@ -39,8 +48,24 @@ object PageCapture {
             webView.draw(canvas)
             canvas.restore()
             y += viewHeight
+            segments++
         }
         webView.scrollTo(0, originalY)
+        webView.invalidate()
+        webView.postInvalidate()
         bitmap
+    }
+
+    private fun captureViewport(
+        webView: WebView,
+        viewHeight: Int,
+        scale: Float,
+    ): Bitmap {
+        val bitmapHeight = (viewHeight * scale).toInt().coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(THUMB_WIDTH, bitmapHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.scale(scale, scale)
+        webView.draw(canvas)
+        return bitmap
     }
 }
