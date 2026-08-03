@@ -1,9 +1,11 @@
 package com.baicaohui.lightweb.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
@@ -20,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +57,7 @@ import com.baicaohui.lightweb.ui.settings.SettingsScreen
 import com.baicaohui.lightweb.ui.settings.SiteSettingsScreen
 import com.baicaohui.lightweb.ui.settings.ToolbarSettingsScreen
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun BchAppRoot() {
@@ -67,6 +71,8 @@ fun BchAppRoot() {
     val currentTabId by app.tabManager.currentId.collectAsStateWithLifecycle()
     val tabCount by app.tabManager.tabs.collectAsStateWithLifecycle(initialValue = emptyList())
     var menuOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val currentTab = tabCount.firstOrNull { it.id == currentTabId }
 
     fun goHome() {
         val current = app.tabManager.current
@@ -170,6 +176,28 @@ fun BchAppRoot() {
                             onClick = {
                                 menuOpen = false
                                 app.webViewStore.get(currentTabId ?: return@DropdownMenuItem)?.reload()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.add_bookmark)) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Add, contentDescription = null)
+                            },
+                            enabled = currentTab?.url?.isNotBlank() == true,
+                            onClick = {
+                                menuOpen = false
+                                val tab = currentTab ?: return@DropdownMenuItem
+                                val url = tab.url
+                                if (url.isNotBlank()) {
+                                    scope.launch {
+                                        app.bookmarkRepository.addBookmark(
+                                            tab.title.ifBlank { url },
+                                            url,
+                                            null,
+                                        )
+                                    }
+                                    Toast.makeText(context, R.string.bookmark_added, Toast.LENGTH_SHORT).show()
+                                }
                             },
                         )
                         DropdownMenuItem(

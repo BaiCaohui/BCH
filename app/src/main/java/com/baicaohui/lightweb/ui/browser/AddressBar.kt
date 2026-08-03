@@ -33,8 +33,8 @@ fun AddressBar(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().height(44.dp),
-            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(26.dp),
             singleLine = true,
             placeholder = { Text(stringResource(R.string.search_hint)) },
             leadingIcon = { Icon(BchIcons.Search, contentDescription = null) },

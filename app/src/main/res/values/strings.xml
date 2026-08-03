@@ -149,4 +149,6 @@
     <string name="offline_banner">当前处于离线状态</string>
     <string name="bottom_menu_more">更多</string>
     <string name="bottom_nav_labels">底部导航显示名称</string>
+    <string name="add_bookmark">添加到书签</string>
+    <string name="bookmark_added">已添加到书签</string>
 </resources>
