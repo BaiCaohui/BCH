@@ -29,4 +29,8 @@
     <string name="empty_history">暂无浏览历史</string>
     <string name="settings_placeholder">设置（后续里程碑实现）</string>
     <string name="home_subtitle">轻量内核 · 高可定制</string>
+    <string name="tabs_title">标签页</string>
+    <string name="tabs_new">新建标签页</string>
+    <string name="tabs_close">关闭</string>
+    <string name="tabs_close_all">关闭全部</string>
 </resources>

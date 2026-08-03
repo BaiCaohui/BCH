@@ -16,11 +16,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
+import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 
 @Composable
 fun BchAppRoot() {
@@ -81,7 +83,28 @@ fun BchAppRoot() {
                 )
             }
             composable(BchRoute.TABS.route) {
-                PlaceholderScreen(text = stringResource(R.string.empty_tabs))
+                val tabs by app.tabManager.tabs.collectAsStateWithLifecycle()
+                val currentId by app.tabManager.currentId.collectAsStateWithLifecycle()
+                TabSwitcherScreen(
+                    tabs = tabs,
+                    currentId = currentId,
+                    onSelect = { id ->
+                        app.tabManager.select(id)
+                        navController.navigate(BchRoute.BROWSER.route) { launchSingleTop = true }
+                    },
+                    onClose = { id -> app.tabManager.closeTab(id) },
+                    onNewTab = {
+                        app.tabManager.newTab("")
+                        navController.navigate(BchRoute.BROWSER.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onCloseAll = {
+                        app.tabManager.tabs.value.map { it.id }.forEach { app.tabManager.closeTab(it) }
+                    },
+                )
             }
             composable(BchRoute.BOOKMARKS.route) {
                 PlaceholderScreen(text = stringResource(R.string.empty_bookmarks))
