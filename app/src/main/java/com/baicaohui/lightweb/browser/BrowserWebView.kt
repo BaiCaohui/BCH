@@ -41,7 +41,7 @@ class BrowserWebView(
         settings.userAgentString = when {
             desktop -> DESKTOP_UA
             prefs.uaMode == UaMode.CUSTOM && prefs.customUa.isNotBlank() -> prefs.customUa
-            else -> null
+            else -> settings.userAgentString
         }
         settings.javaScriptEnabled = site?.jsEnabled ?: prefs.defaultJsEnabled
         settings.setSafeBrowsingEnabled(prefs.safeBrowsing)
