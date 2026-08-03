@@ -192,7 +192,7 @@ fun BrowserScreen(
         val topBar = @Composable {
             Column(
                 modifier = Modifier
-                    .statusBarsPadding()
+                    .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainer),
             ) {
                 if (!online) {
@@ -216,9 +216,26 @@ fun BrowserScreen(
             }
         }
         if (!showStartPage && browserPrefs.toolbarPosition == ToolbarPosition.TOP) {
-            topBar()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) {
+                topBar()
+            }
         }
-        Box(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (!showStartPage && browserPrefs.toolbarPosition == ToolbarPosition.BOTTOM) {
+                        Modifier.statusBarsPadding()
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
             val tab = activeTab
             if (tab != null) {
                 key(tab.id) {
