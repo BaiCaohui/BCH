@@ -1,6 +1,7 @@
 package com.baicaohui.lightweb
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.webkit.CookieManager
 import com.baicaohui.lightweb.browser.SessionStore
 import com.baicaohui.lightweb.browser.AdBlocker
@@ -16,6 +17,7 @@ import com.baicaohui.lightweb.data.repo.BookmarkRepository
 import com.baicaohui.lightweb.data.repo.HistoryRepository
 import com.baicaohui.lightweb.data.repo.ShortcutRepository
 import com.baicaohui.lightweb.data.repo.SiteSettingsRepository
+import com.baicaohui.lightweb.util.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,12 +60,15 @@ class BchApp : Application() {
         }
     }
 
+    val networkMonitor by lazy { NetworkMonitor(this) }
+
     override fun onCreate() {
         super.onCreate()
         themePrefs = ThemePrefs.create(this)
         homePrefs = HomePrefs.create(this)
         browserPrefsStore = BrowserPrefsStore.create(this)
         CookieManager.getInstance().setAcceptCookie(true)
+        networkMonitor.start()
         val sessionStore = SessionStore(getSharedPreferences("session", MODE_PRIVATE))
         sessionStore.load()?.let { tabManager.restore(it) }
         appScope.launch {
@@ -74,6 +79,13 @@ class BchApp : Application() {
                 currentBrowserPrefs = prefs
                 tabManager.setMaxTabs(prefs.maxTabs)
             }
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            runCatching { CookieManager.getInstance().flush() }
         }
     }
 }

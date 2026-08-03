@@ -147,4 +147,5 @@
     <string name="about_version">版本</string>
     <string name="about_webview">WebView 版本</string>
     <string name="about_license">开源许可</string>
+    <string name="offline_banner">当前处于离线状态</string>
 </resources>
