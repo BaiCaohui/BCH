@@ -21,6 +21,9 @@ fun BrowserToolbar(
     canGoBack: Boolean,
     canGoForward: Boolean,
     tabCount: Int,
+    showBack: Boolean = true,
+    showForward: Boolean = true,
+    showReload: Boolean = true,
     onBack: () -> Unit,
     onForward: () -> Unit,
     onReload: () -> Unit,
@@ -30,14 +33,20 @@ fun BrowserToolbar(
         modifier = Modifier.fillMaxWidth().height(48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack, enabled = canGoBack) {
-            Icon(BchIcons.Back, contentDescription = stringResource(R.string.action_back))
+        if (showBack) {
+            IconButton(onClick = onBack, enabled = canGoBack) {
+                Icon(BchIcons.Back, contentDescription = stringResource(R.string.action_back))
+            }
         }
-        IconButton(onClick = onForward, enabled = canGoForward) {
-            Icon(BchIcons.Forward, contentDescription = stringResource(R.string.action_forward))
+        if (showForward) {
+            IconButton(onClick = onForward, enabled = canGoForward) {
+                Icon(BchIcons.Forward, contentDescription = stringResource(R.string.action_forward))
+            }
         }
-        IconButton(onClick = onReload) {
-            Icon(BchIcons.Refresh, contentDescription = stringResource(R.string.action_reload))
+        if (showReload) {
+            IconButton(onClick = onReload) {
+                Icon(BchIcons.Refresh, contentDescription = stringResource(R.string.action_reload))
+            }
         }
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onTabs) {

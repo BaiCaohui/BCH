@@ -1,6 +1,7 @@
 package com.baicaohui.lightweb
 
 import android.app.Application
+import android.webkit.CookieManager
 import com.baicaohui.lightweb.browser.SessionStore
 import com.baicaohui.lightweb.browser.AdBlocker
 import com.baicaohui.lightweb.browser.TabManager
@@ -9,6 +10,8 @@ import com.baicaohui.lightweb.browser.AdLevel
 import com.baicaohui.lightweb.data.db.AppDatabase
 import com.baicaohui.lightweb.data.prefs.ThemePrefs
 import com.baicaohui.lightweb.data.prefs.HomePrefs
+import com.baicaohui.lightweb.data.prefs.BrowserPrefs
+import com.baicaohui.lightweb.data.prefs.BrowserPrefsStore
 import com.baicaohui.lightweb.data.repo.BookmarkRepository
 import com.baicaohui.lightweb.data.repo.HistoryRepository
 import com.baicaohui.lightweb.data.repo.ShortcutRepository
@@ -24,6 +27,9 @@ class BchApp : Application() {
         private set
 
     lateinit var homePrefs: HomePrefs
+        private set
+
+    lateinit var browserPrefsStore: BrowserPrefsStore
         private set
 
     val tabManager: TabManager = TabManager()
@@ -42,16 +48,32 @@ class BchApp : Application() {
     val historyRepository by lazy { HistoryRepository(database.historyDao()) }
     val shortcutRepository by lazy { ShortcutRepository(database.shortcutDao()) }
     val siteSettingsRepository by lazy { SiteSettingsRepository(database.siteSettingDao()) }
-    val webViewStore by lazy { WebViewStore(adBlocker) { AdLevel.BASIC } }
+    @Volatile
+    var currentBrowserPrefs: BrowserPrefs = BrowserPrefs.DEFAULT
+        private set
+
+    val webViewStore by lazy {
+        WebViewStore(adBlocker) {
+            AdLevel.valueOf(currentBrowserPrefs.adLevel)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         themePrefs = ThemePrefs.create(this)
         homePrefs = HomePrefs.create(this)
+        browserPrefsStore = BrowserPrefsStore.create(this)
+        CookieManager.getInstance().setAcceptCookie(true)
         val sessionStore = SessionStore(getSharedPreferences("session", MODE_PRIVATE))
         sessionStore.load()?.let { tabManager.restore(it) }
         appScope.launch {
             tabManager.tabs.collect { tabManager.snapshots().let(sessionStore::save) }
+        }
+        appScope.launch {
+            browserPrefsStore.prefs.collect { prefs ->
+                currentBrowserPrefs = prefs
+                tabManager.setMaxTabs(prefs.maxTabs)
+            }
         }
     }
 }

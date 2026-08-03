@@ -10,6 +10,8 @@ class SiteSettingsRepository(private val dao: SiteSettingDao) {
 
     val all: Flow<List<SiteSettingEntity>> = dao.observeAll()
 
+    suspend fun get(host: String): SiteSettingEntity? = dao.getByHost(host)
+
     suspend fun upsert(
         host: String,
         jsEnabled: Boolean? = null,

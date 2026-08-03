@@ -101,6 +101,9 @@ interface ShortcutDao {
 @Dao
 interface SiteSettingDao {
     @Query("SELECT * FROM site_settings WHERE host = :host LIMIT 1")
+    suspend fun getByHost(host: String): SiteSettingEntity?
+
+    @Query("SELECT * FROM site_settings WHERE host = :host LIMIT 1")
     fun observe(host: String): Flow<SiteSettingEntity?>
 
     @Query("SELECT * FROM site_settings ORDER BY host")

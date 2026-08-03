@@ -91,4 +91,16 @@ class TabManagerTest {
         assertEquals(0, manager.tabs.value.size)
         assertNull(manager.currentId.value)
     }
+
+    @Test
+    fun `setMaxTabs evicts until under limit`() {
+        val manager = TabManager(maxTabs = 4)
+        manager.newTab("https://a.com")
+        manager.newTab("https://b.com")
+        manager.newTab("https://c.com")
+        manager.newTab("https://d.com")
+        manager.setMaxTabs(2)
+        assertEquals(2, manager.tabs.value.size)
+        assertEquals(listOf("https://c.com", "https://d.com"), manager.tabs.value.map { it.url })
+    }
 }

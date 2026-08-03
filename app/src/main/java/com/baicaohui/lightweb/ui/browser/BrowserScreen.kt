@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,8 +36,11 @@ import com.baicaohui.lightweb.browser.DownloadHandler
 import com.baicaohui.lightweb.browser.PermissionMapping
 import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabStatus
+import com.baicaohui.lightweb.browser.UrlSecurity
 import com.baicaohui.lightweb.browser.WebCallbacks
+import com.baicaohui.lightweb.data.prefs.ToolbarPosition
 import com.baicaohui.lightweb.ui.components.ErrorPage
+import kotlinx.coroutines.launch
 
 private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 
@@ -64,6 +68,8 @@ fun BrowserScreen(
 
     val downloadHandler = remember { DownloadHandler(context) }
     val webViewStore = app.webViewStore
+    val browserPrefs = app.currentBrowserPrefs
+    val scope = rememberCoroutineScope()
 
     fun tabCallbacks(tabId: Long) = object : WebCallbacks {
         override fun onProgress(progress: Int) = viewModel.onProgress(tabId, progress)
@@ -71,6 +77,13 @@ fun BrowserScreen(
         override fun onPageStarted(url: String) {
             viewModel.onPageStarted(tabId, url)
             webViewStore.markLoaded(tabId, url)
+            val host = UrlSecurity.extractHost(url)
+            if (host != null) {
+                scope.launch {
+                    val site = app.siteSettingsRepository.get(host)
+                    webViewStore.get(tabId)?.applySiteSettings(url, app.currentBrowserPrefs, site)
+                }
+            }
             if (tabId == viewModel.currentId.value) addressText = url
         }
 
@@ -141,23 +154,33 @@ fun BrowserScreen(
     BackHandler(enabled = canGoBack) { currentWebView?.goBack() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BrowserToolbar(
-            canGoBack = canGoBack,
-            canGoForward = currentWebView?.canGoForward() == true,
-            tabCount = tabs.size,
-            onBack = { currentWebView?.goBack() },
-            onForward = { currentWebView?.goForward() },
-            onReload = { currentWebView?.reload() },
-            onTabs = onOpenTabs,
-        )
-        AddressBar(
-            value = addressText,
-            onValueChange = { addressText = it },
-            onSubmit = {
-                viewModel.submitInput(addressText, SEARCH_TEMPLATE)
-            },
-            progress = activeTab?.progress ?: 0,
-        )
+        val topBar = @Composable {
+            Column {
+                BrowserToolbar(
+                    canGoBack = canGoBack,
+                    canGoForward = currentWebView?.canGoForward() == true,
+                    tabCount = tabs.size,
+                    showBack = browserPrefs.showBack,
+                    showForward = browserPrefs.showForward,
+                    showReload = browserPrefs.showReload,
+                    onBack = { currentWebView?.goBack() },
+                    onForward = { currentWebView?.goForward() },
+                    onReload = { currentWebView?.reload() },
+                    onTabs = onOpenTabs,
+                )
+                AddressBar(
+                    value = addressText,
+                    onValueChange = { addressText = it },
+                    onSubmit = {
+                        viewModel.submitInput(addressText, app.currentBrowserPrefs.searchTemplate)
+                    },
+                    progress = activeTab?.progress ?: 0,
+                )
+            }
+        }
+        if (browserPrefs.toolbarPosition == ToolbarPosition.TOP) {
+            topBar()
+        }
         Box(modifier = Modifier.fillMaxSize()) {
             val tab = activeTab
             if (tab != null) {
@@ -189,6 +212,9 @@ fun BrowserScreen(
                     modifier = Modifier.matchParentSize(),
                 )
             }
+        }
+        if (browserPrefs.toolbarPosition == ToolbarPosition.BOTTOM) {
+            topBar()
         }
 
         pendingExternal?.let { url ->

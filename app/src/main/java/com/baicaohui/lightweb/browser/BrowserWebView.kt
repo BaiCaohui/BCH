@@ -3,6 +3,10 @@ package com.baicaohui.lightweb.browser
 import android.content.Context
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.CookieManager
+import com.baicaohui.lightweb.data.db.SiteSettingEntity
+import com.baicaohui.lightweb.data.prefs.BrowserPrefs
+import com.baicaohui.lightweb.data.prefs.UaMode
 
 class BrowserWebView(
     context: Context,
@@ -30,5 +34,23 @@ class BrowserWebView(
         }
         webViewClient = BchWebViewClient(adBlocker, adLevel, callbacks)
         webChromeClient = BchWebChromeClient(callbacks)
+    }
+
+    fun applySiteSettings(url: String, prefs: BrowserPrefs, site: SiteSettingEntity?) {
+        val desktop = site?.desktopMode ?: (prefs.uaMode == UaMode.DESKTOP)
+        settings.userAgentString = when {
+            desktop -> DESKTOP_UA
+            prefs.uaMode == UaMode.CUSTOM && prefs.customUa.isNotBlank() -> prefs.customUa
+            else -> null
+        }
+        settings.javaScriptEnabled = site?.jsEnabled ?: prefs.defaultJsEnabled
+        settings.setSafeBrowsingEnabled(prefs.safeBrowsing)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(this, prefs.thirdPartyCookies)
+    }
+
+    private companion object {
+        val DESKTOP_UA =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     }
 }
