@@ -159,19 +159,22 @@ fun BrowserScreen(
     val canGoBack = currentWebView?.canGoBack() == true
     BackHandler(enabled = canGoBack) { currentWebView?.goBack() }
 
+    val showStartPage = activeTab == null ||
+        (activeTab.status == TabStatus.EMPTY && activeTab.url.isBlank())
+
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!online) {
-            Surface(color = MaterialTheme.colorScheme.errorContainer) {
-                Text(
-                    text = stringResource(R.string.offline_banner),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
         val topBar = @Composable {
             Column {
+                if (!online) {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                        Text(
+                            text = stringResource(R.string.offline_banner),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
                 BrowserToolbar(
                     canGoBack = canGoBack,
                     canGoForward = currentWebView?.canGoForward() == true,
@@ -194,7 +197,7 @@ fun BrowserScreen(
                 )
             }
         }
-        if (browserPrefs.toolbarPosition == ToolbarPosition.TOP) {
+        if (!showStartPage && browserPrefs.toolbarPosition == ToolbarPosition.TOP) {
             topBar()
         }
         Box(modifier = Modifier.fillMaxSize()) {
@@ -212,8 +215,6 @@ fun BrowserScreen(
                     )
                 }
             }
-            val showStartPage = tab == null ||
-                (tab.status == TabStatus.EMPTY && tab.url.isBlank())
             if (showStartPage) {
                 StartPage(
                     onSearch = { viewModel.submitInput(it, app.currentBrowserPrefs.searchTemplate) },
@@ -228,7 +229,7 @@ fun BrowserScreen(
                 )
             }
         }
-        if (browserPrefs.toolbarPosition == ToolbarPosition.BOTTOM) {
+        if (!showStartPage && browserPrefs.toolbarPosition == ToolbarPosition.BOTTOM) {
             topBar()
         }
 
