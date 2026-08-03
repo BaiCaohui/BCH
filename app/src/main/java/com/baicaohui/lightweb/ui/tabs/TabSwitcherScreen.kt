@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -41,6 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -49,13 +55,17 @@ import androidx.compose.ui.unit.dp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.UrlSecurity
+import com.baicaohui.lightweb.ui.home.BackgroundType
+import com.baicaohui.lightweb.ui.home.HomeConfig
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
+import coil.compose.AsyncImage
 
 @Composable
 fun TabSwitcherScreen(
     tabs: List<Tab>,
     currentId: Long?,
     thumbnails: Map<Long, Bitmap> = emptyMap(),
+    homeConfig: HomeConfig = HomeConfig.DEFAULT,
     onSelect: (Long) -> Unit,
     onClose: (Long) -> Unit,
     onNewTab: () -> Unit,
@@ -90,6 +100,7 @@ fun TabSwitcherScreen(
                             tab = tab,
                             selected = tab.id == currentId,
                             thumbnail = thumbnails[tab.id],
+                            homeConfig = homeConfig,
                             onSelect = { onSelect(tab.id) },
                             onClose = { onClose(tab.id) },
                         )
@@ -112,6 +123,7 @@ private fun TabCard(
     tab: Tab,
     selected: Boolean,
     thumbnail: Bitmap?,
+    homeConfig: HomeConfig,
     onSelect: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -137,7 +149,9 @@ private fun TabCard(
                         .height(150.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
-                    if (thumbnail != null) {
+                    if (tab.url.isBlank()) {
+                        HomePreview(config = homeConfig, modifier = Modifier.fillMaxSize())
+                    } else if (thumbnail != null) {
                         Image(
                             bitmap = thumbnail.asImageBitmap(),
                             contentDescription = null,
@@ -176,6 +190,67 @@ private fun TabCard(
                         onClose()
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomePreview(config: HomeConfig, modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        when (config.background.type) {
+            BackgroundType.COLOR -> {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+                if (config.background.color != 0x00000000L) {
+                    Box(Modifier.fillMaxSize().background(Color(config.background.color)))
+                }
+            }
+            BackgroundType.GRADIENT -> Box(
+                Modifier.fillMaxSize().background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color(config.background.gradientStart),
+                            Color(config.background.gradientEnd),
+                        ),
+                    ),
+                ),
+            )
+            BackgroundType.IMAGE -> {
+                val uri = config.background.imageUri
+                if (uri != null) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = config.overlayAlpha)))
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)),
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(4) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)),
+                    )
+                }
             }
         }
     }

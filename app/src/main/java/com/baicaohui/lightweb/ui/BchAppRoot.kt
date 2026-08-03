@@ -47,6 +47,7 @@ import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.components.TabCountIcon
 import com.baicaohui.lightweb.ui.history.HistoryScreen
 import com.baicaohui.lightweb.ui.home.HomeEditScreen
+import com.baicaohui.lightweb.ui.home.HomeConfig
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 import com.baicaohui.lightweb.ui.settings.AboutScreen
 import com.baicaohui.lightweb.ui.settings.AppearanceScreen
@@ -70,6 +71,7 @@ fun BchAppRoot() {
     val navState by app.navigationState.collectAsStateWithLifecycle()
     val currentTabId by app.tabManager.currentId.collectAsStateWithLifecycle()
     val tabCount by app.tabManager.tabs.collectAsStateWithLifecycle(initialValue = emptyList())
+    val homeConfig by app.homePrefs.config.collectAsStateWithLifecycle(initialValue = HomeConfig.DEFAULT)
     var menuOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val currentTab = tabCount.firstOrNull { it.id == currentTabId }
@@ -256,6 +258,7 @@ fun BchAppRoot() {
                     tabs = tabs,
                     currentId = currentId,
                     thumbnails = thumbnails,
+                    homeConfig = homeConfig,
                     onSelect = { id ->
                         app.tabManager.select(id)
                         navController.navigate(BchRoute.BROWSER.route) { launchSingleTop = true }
