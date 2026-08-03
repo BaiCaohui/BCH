@@ -23,6 +23,7 @@ import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.history.HistoryScreen
+import com.baicaohui.lightweb.ui.home.HomeEditScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 
@@ -82,8 +83,10 @@ fun BchAppRoot() {
                 BrowserScreen(
                     initialUrl = app.pendingUrl.also { app.pendingUrl = null },
                     onOpenTabs = { navController.navigate(BchRoute.TABS.route) },
+                    onEditHome = { navController.navigate(BchRoute.HOME_EDIT.route) },
                 )
             }
+            composable(BchRoute.HOME_EDIT.route) { HomeEditScreen() }
             composable(BchRoute.TABS.route) {
                 val tabs by app.tabManager.tabs.collectAsStateWithLifecycle()
                 val currentId by app.tabManager.currentId.collectAsStateWithLifecycle()

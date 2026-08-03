@@ -8,6 +8,7 @@ import com.baicaohui.lightweb.browser.WebViewStore
 import com.baicaohui.lightweb.browser.AdLevel
 import com.baicaohui.lightweb.data.db.AppDatabase
 import com.baicaohui.lightweb.data.prefs.ThemePrefs
+import com.baicaohui.lightweb.data.prefs.HomePrefs
 import com.baicaohui.lightweb.data.repo.BookmarkRepository
 import com.baicaohui.lightweb.data.repo.HistoryRepository
 import com.baicaohui.lightweb.data.repo.ShortcutRepository
@@ -20,6 +21,9 @@ import kotlinx.coroutines.launch
 class BchApp : Application() {
 
     lateinit var themePrefs: ThemePrefs
+        private set
+
+    lateinit var homePrefs: HomePrefs
         private set
 
     val tabManager: TabManager = TabManager()
@@ -43,6 +47,7 @@ class BchApp : Application() {
     override fun onCreate() {
         super.onCreate()
         themePrefs = ThemePrefs.create(this)
+        homePrefs = HomePrefs.create(this)
         val sessionStore = SessionStore(getSharedPreferences("session", MODE_PRIVATE))
         sessionStore.load()?.let { tabManager.restore(it) }
         appScope.launch {

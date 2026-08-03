@@ -26,6 +26,7 @@ enum class BchRoute(
     BOOKMARKS("bookmarks", R.string.nav_bookmarks, Icons.Filled.Star, true),
     HISTORY("history", R.string.nav_history, Icons.Filled.DateRange, true),
     SETTINGS("settings", R.string.nav_settings, Icons.Filled.Settings, true),
+    HOME_EDIT("homeEdit", R.string.home_edit, null, false),
 }
 
 /** M1 用到的工具栏图标，集中声明避免散落 import。 */
