@@ -17,6 +17,7 @@ class BrowserWebView(
 
     init {
         settings.apply {
+            userAgentString = MOBILE_UA
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = false
@@ -41,7 +42,7 @@ class BrowserWebView(
         settings.userAgentString = when {
             desktop -> DESKTOP_UA
             prefs.uaMode == UaMode.CUSTOM && prefs.customUa.isNotBlank() -> prefs.customUa
-            else -> settings.userAgentString
+            else -> MOBILE_UA
         }
         settings.javaScriptEnabled = site?.jsEnabled ?: prefs.defaultJsEnabled
         settings.setSafeBrowsingEnabled(prefs.safeBrowsing)
@@ -49,6 +50,10 @@ class BrowserWebView(
     }
 
     private companion object {
+        const val MOBILE_UA =
+            "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+
         val DESKTOP_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
