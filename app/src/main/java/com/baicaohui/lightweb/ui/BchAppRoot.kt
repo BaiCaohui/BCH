@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,7 @@ import com.baicaohui.lightweb.ui.navigation.BchIcons
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
+import com.baicaohui.lightweb.ui.components.TabCountIcon
 import com.baicaohui.lightweb.ui.history.HistoryScreen
 import com.baicaohui.lightweb.ui.home.HomeEditScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
@@ -58,6 +60,7 @@ fun BchAppRoot() {
     val browserPrefs by app.browserPrefsStore.prefs.collectAsStateWithLifecycle(initialValue = BrowserPrefs.DEFAULT)
     val navState by app.navigationState.collectAsStateWithLifecycle()
     val currentTabId by app.tabManager.currentId.collectAsStateWithLifecycle()
+    val tabCount by app.tabManager.tabs.collectAsStateWithLifecycle(initialValue = emptyList())
     var menuOpen by remember { mutableStateOf(false) }
 
     fun goHome() {
@@ -83,35 +86,40 @@ fun BchAppRoot() {
     Scaffold(
         bottomBar = {
             NavigationBar {
-                IconButton(
-                    onClick = {
-                        app.webViewStore.get(currentTabId ?: return@IconButton)?.goBack()
-                        val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
-                        app.navigationState.value = NavigationState(
-                            canGoBack = wv?.canGoBack() == true,
-                            canGoForward = wv?.canGoForward() == true,
-                        )
-                    },
-                    enabled = navState.canGoBack,
-                ) {
-                    Icon(BchIcons.Back, contentDescription = stringResource(R.string.action_back))
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    IconButton(
+                        onClick = {
+                            app.webViewStore.get(currentTabId ?: return@IconButton)?.goBack()
+                            val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
+                            app.navigationState.value = NavigationState(
+                                canGoBack = wv?.canGoBack() == true,
+                                canGoForward = wv?.canGoForward() == true,
+                            )
+                        },
+                        enabled = navState.canGoBack,
+                    ) {
+                        Icon(BchIcons.Back, contentDescription = stringResource(R.string.action_back))
+                    }
                 }
-                IconButton(
-                    onClick = {
-                        app.webViewStore.get(currentTabId ?: return@IconButton)?.goForward()
-                        val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
-                        app.navigationState.value = NavigationState(
-                            canGoBack = wv?.canGoBack() == true,
-                            canGoForward = wv?.canGoForward() == true,
-                        )
-                    },
-                    enabled = navState.canGoForward,
-                ) {
-                    Icon(BchIcons.Forward, contentDescription = stringResource(R.string.action_forward))
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    IconButton(
+                        onClick = {
+                            app.webViewStore.get(currentTabId ?: return@IconButton)?.goForward()
+                            val wv = app.webViewStore.get(currentTabId ?: return@IconButton)
+                            app.navigationState.value = NavigationState(
+                                canGoBack = wv?.canGoBack() == true,
+                                canGoForward = wv?.canGoForward() == true,
+                            )
+                        },
+                        enabled = navState.canGoForward,
+                    ) {
+                        Icon(BchIcons.Forward, contentDescription = stringResource(R.string.action_forward))
+                    }
                 }
                 NavigationBarItem(
                     selected = currentRoute == BchRoute.BROWSER.route,
                     onClick = { goHome() },
+                    modifier = Modifier.weight(1f),
                     icon = {
                         Icon(
                             imageVector = BchRoute.HOME.icon!!,
@@ -127,9 +135,10 @@ fun BchAppRoot() {
                 NavigationBarItem(
                     selected = currentRoute == BchRoute.TABS.route,
                     onClick = { navigateTo(BchRoute.TABS.route) },
+                    modifier = Modifier.weight(1f),
                     icon = {
-                        Icon(
-                            imageVector = BchRoute.TABS.icon!!,
+                        TabCountIcon(
+                            count = tabCount.size,
                             contentDescription = stringResource(BchRoute.TABS.labelRes),
                         )
                     },
@@ -139,7 +148,7 @@ fun BchAppRoot() {
                         null
                     },
                 )
-                Box {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(
                             imageVector = Icons.Filled.Menu,
