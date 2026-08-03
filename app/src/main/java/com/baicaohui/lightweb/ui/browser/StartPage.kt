@@ -5,15 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,12 +22,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.baicaohui.lightweb.BchApp
-import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.data.db.ShortcutEntity
 import com.baicaohui.lightweb.ui.home.BackgroundType
 import com.baicaohui.lightweb.ui.home.BookmarksWidget
@@ -49,7 +42,6 @@ import kotlinx.coroutines.launch
 fun StartPage(
     onSearch: (String) -> Unit,
     onOpenUrl: (String) -> Unit,
-    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -65,9 +57,12 @@ fun StartPage(
 
     Box(modifier = modifier.fillMaxSize()) {
         when (config.background.type) {
-            BackgroundType.COLOR -> Box(
-                Modifier.fillMaxSize().background(Color(config.background.color)),
-            )
+            BackgroundType.COLOR -> {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+                if (config.background.color != 0x00000000L) {
+                    Box(Modifier.fillMaxSize().background(Color(config.background.color)))
+                }
+            }
             BackgroundType.GRADIENT -> Box(
                 Modifier.fillMaxSize().background(
                     Brush.linearGradient(
@@ -88,7 +83,7 @@ fun StartPage(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+                    Box(Modifier.fillMaxSize().background(Color.Transparent))
                 }
             }
         }
@@ -98,8 +93,10 @@ fun StartPage(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Spacer(Modifier.height(48.dp))
             config.widgets.filter { it.enabled }.forEach { widget ->
                 when (widget.type) {
                     HomeWidgetType.SEARCH -> SearchWidget(onSearch = onSearch)
@@ -123,15 +120,8 @@ fun StartPage(
                     )
                     HomeWidgetType.CLOCK -> ClockWidget()
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(40.dp))
             }
-        }
-
-        IconButton(
-            onClick = onEdit,
-            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
-        ) {
-            Icon(Icons.Filled.Create, contentDescription = stringResource(R.string.home_edit))
         }
     }
 

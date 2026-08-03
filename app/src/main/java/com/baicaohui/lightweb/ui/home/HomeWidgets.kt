@@ -1,6 +1,8 @@
 package com.baicaohui.lightweb.ui.home
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,11 +13,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ListItem
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,11 +30,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.baicaohui.lightweb.R
+import com.baicaohui.lightweb.data.db.BookmarkEntity
 import com.baicaohui.lightweb.data.db.HistoryEntity
 import com.baicaohui.lightweb.data.db.ShortcutEntity
 import com.baicaohui.lightweb.ui.components.SearchPill
@@ -41,20 +48,12 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun SearchWidget(onSearch: (String) -> Unit, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
-    Column(modifier = modifier.fillMaxWidth()) {
-        SearchPill(
-            query = query,
-            onQueryChange = { query = it },
-            onSearch = { if (query.isNotBlank()) onSearch(query.trim()) },
-        )
-        Spacer(Modifier.height(10.dp))
-        Button(
-            onClick = { if (query.isNotBlank()) onSearch(query.trim()) },
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        ) {
-            Text(stringResource(R.string.search_submit))
-        }
-    }
+    SearchPill(
+        query = query,
+        onQueryChange = { query = it },
+        onSearch = { if (query.isNotBlank()) onSearch(query.trim()) },
+        modifier = modifier.widthIn(max = 420.dp),
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -68,51 +67,83 @@ fun SpeedDialWidget(
     onDelete: (ShortcutEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        WidgetHeader(stringResource(R.string.widget_speed_dial))
-        Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onAdd),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         if (shortcuts.isEmpty()) {
-            OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.widget_add_shortcut))
-            }
+            GhostAddItem(onAdd = onAdd)
         } else {
             shortcuts.chunked(columns).forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     row.forEach { shortcut ->
-                        Column(
-                            modifier = Modifier
-                                .width(72.dp)
-                                .combinedClickable(
-                                    onClick = { onOpen(shortcut.url) },
-                                    onLongClick = { onEdit(shortcut) },
-                                ),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Favicon(
-                                url = shortcut.url,
-                                title = shortcut.title,
-                                color = shortcut.color,
-                                size = 48.dp,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = shortcut.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-                    repeat(columns - row.size) {
-                        Spacer(Modifier.width(72.dp))
+                        SpeedDialItem(
+                            shortcut = shortcut,
+                            onOpen = { onOpen(shortcut.url) },
+                            onEdit = { onEdit(shortcut) },
+                        )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(20.dp))
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SpeedDialItem(
+    shortcut: ShortcutEntity,
+    onOpen: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(68.dp)
+            .combinedClickable(onClick = onOpen, onLongClick = onEdit),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Favicon(
+            url = shortcut.url,
+            title = shortcut.title,
+            color = shortcut.color,
+            size = 44.dp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = shortcut.title,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun GhostAddItem(onAdd: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(68.dp)
+            .clickable(onClick = onAdd),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.widget_add_shortcut),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -126,16 +157,11 @@ fun RecentWidget(
 ) {
     if (entries.isEmpty()) return
     Column(modifier = modifier.fillMaxWidth()) {
-        WidgetHeader(stringResource(R.string.widget_recent))
         entries.take(limit).forEach { entry ->
-            ListItem(
-                modifier = Modifier.clickable { onOpen(entry.url) },
-                headlineContent = {
-                    Text(entry.title.ifBlank { entry.url }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent = {
-                    Text(entry.url, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
+            CompactRow(
+                url = entry.url,
+                title = entry.title.ifBlank { entry.url },
+                onClick = { onOpen(entry.url) },
             )
         }
     }
@@ -143,23 +169,51 @@ fun RecentWidget(
 
 @Composable
 fun BookmarksWidget(
-    bookmarks: List<com.baicaohui.lightweb.data.db.BookmarkEntity>,
+    bookmarks: List<BookmarkEntity>,
     limit: Int,
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (bookmarks.isEmpty()) return
     Column(modifier = modifier.fillMaxWidth()) {
-        WidgetHeader(stringResource(R.string.widget_bookmarks))
         bookmarks.take(limit).forEach { bookmark ->
-            ListItem(
-                modifier = Modifier.clickable { onOpen(bookmark.url) },
-                headlineContent = {
-                    Text(bookmark.title.ifBlank { bookmark.url }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent = {
-                    Text(bookmark.url, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
+            CompactRow(
+                url = bookmark.url,
+                title = bookmark.title.ifBlank { bookmark.url },
+                onClick = { onOpen(bookmark.url) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactRow(
+    url: String,
+    title: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Favicon(url = url, title = title, size = 20.dp)
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = com.baicaohui.lightweb.browser.UrlSecurity.extractHost(url) ?: url,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -182,17 +236,8 @@ fun ClockWidget(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth()) {
         Text(
             text = time,
-            style = MaterialTheme.typography.displayMedium,
+            style = MaterialTheme.typography.displayLarge,
             modifier = Modifier.align(Alignment.Center),
         )
     }
-}
-
-@Composable
-private fun WidgetHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }

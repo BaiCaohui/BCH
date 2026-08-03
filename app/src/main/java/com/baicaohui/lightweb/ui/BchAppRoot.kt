@@ -91,7 +91,6 @@ fun BchAppRoot() {
                 BrowserScreen(
                     initialUrl = app.pendingUrl.also { app.pendingUrl = null },
                     onOpenTabs = { navController.navigate(BchRoute.TABS.route) },
-                    onEditHome = { navController.navigate(BchRoute.HOME_EDIT.route) },
                 )
             }
             composable(BchRoute.HOME_EDIT.route) { HomeEditScreen() }

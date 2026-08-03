@@ -54,7 +54,6 @@ private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 fun BrowserScreen(
     initialUrl: String? = null,
     onOpenTabs: () -> Unit = {},
-    onEditHome: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as BchApp
@@ -217,9 +216,8 @@ fun BrowserScreen(
                 (tab.status == TabStatus.EMPTY && tab.url.isBlank())
             if (showStartPage) {
                 StartPage(
-                    onSearch = { viewModel.submitInput(it, SEARCH_TEMPLATE) },
-                    onOpenUrl = { viewModel.submitInput(it, SEARCH_TEMPLATE) },
-                    onEdit = onEditHome,
+                    onSearch = { viewModel.submitInput(it, app.currentBrowserPrefs.searchTemplate) },
+                    onOpenUrl = { viewModel.submitInput(it, app.currentBrowserPrefs.searchTemplate) },
                     modifier = Modifier.matchParentSize(),
                 )
             }

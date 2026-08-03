@@ -19,7 +19,7 @@ enum class BackgroundType { COLOR, GRADIENT, IMAGE }
 @Serializable
 data class HomeBackground(
     val type: BackgroundType = BackgroundType.COLOR,
-    val color: Long = 0xFFF7F8FA,
+    val color: Long = 0x00000000,
     val gradientStart: Long = 0xFF2B7FFF,
     val gradientEnd: Long = 0xFF00A87E,
     val imageUri: String? = null,
@@ -35,8 +35,12 @@ data class HomeConfig(
     companion object {
         val DEFAULT = HomeConfig()
 
-        private fun defaultWidgets(): List<HomeWidgetConfig> = HomeWidgetType.entries.map {
-            HomeWidgetConfig(type = it)
-        }
+        private fun defaultWidgets(): List<HomeWidgetConfig> = listOf(
+            HomeWidgetConfig(type = HomeWidgetType.SEARCH, enabled = true),
+            HomeWidgetConfig(type = HomeWidgetType.SPEED_DIAL, enabled = true),
+            HomeWidgetConfig(type = HomeWidgetType.RECENT, enabled = false),
+            HomeWidgetConfig(type = HomeWidgetType.BOOKMARKS, enabled = false),
+            HomeWidgetConfig(type = HomeWidgetType.CLOCK, enabled = false),
+        )
     }
 }
