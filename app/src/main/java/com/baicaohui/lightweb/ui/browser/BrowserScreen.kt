@@ -38,6 +38,8 @@ import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.browser.WebCallbacks
 import com.baicaohui.lightweb.ui.components.ErrorPage
 
+private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
+
 @Composable
 fun BrowserScreen(initialUrl: String? = null) {
     val context = LocalContext.current
@@ -133,7 +135,7 @@ fun BrowserScreen(initialUrl: String? = null) {
             value = addressText,
             onValueChange = { addressText = it },
             onSubmit = {
-                viewModel.submitInput(addressText, "https://www.bing.com/search?q=%s")
+                viewModel.submitInput(addressText, SEARCH_TEMPLATE)
             },
             progress = activeTab?.progress ?: 0,
         )
@@ -147,17 +149,27 @@ fun BrowserScreen(initialUrl: String? = null) {
                         adLevel = { AdLevel.BASIC },
                     ).also { wv ->
                         webView = wv
-                        val target = initialUrl
-                            ?: viewModel.tabs.value.firstOrNull { it.id == viewModel.currentId.value }?.url
-                        if (!target.isNullOrBlank()) {
-                            if (viewModel.currentId.value == null) viewModel.newTab(target)
-                            wv.loadUrl(target)
+                        if (!initialUrl.isNullOrBlank()) {
+                            viewModel.submitInput(initialUrl, SEARCH_TEMPLATE)
+                        } else {
+                            val target = viewModel.tabs.value
+                                .firstOrNull { it.id == viewModel.currentId.value }
+                                ?.url
+                            if (!target.isNullOrBlank()) wv.loadUrl(target)
                         }
                     }
                 },
                 update = {},
                 modifier = Modifier.fillMaxSize(),
             )
+            val showStartPage = activeTab == null ||
+                (activeTab.status == TabStatus.EMPTY && activeTab.url.isBlank())
+            if (showStartPage) {
+                StartPage(
+                    onSearch = { viewModel.submitInput(it, SEARCH_TEMPLATE) },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             if (activeTab?.status == TabStatus.ERROR) {
                 ErrorPage(
                     onRetry = viewModel::retry,

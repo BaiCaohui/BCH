@@ -70,7 +70,13 @@ fun BchAppRoot() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(BchRoute.HOME.route) {
-                HomeScreen(onNavigate = { route -> navController.navigate(route) })
+                HomeScreen(
+                    onSearch = { query ->
+                        app.pendingUrl = query
+                        navController.navigate(BchRoute.BROWSER.route)
+                    },
+                    onNavigate = { route -> navController.navigate(route) },
+                )
             }
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(initialUrl = app.pendingUrl.also { app.pendingUrl = null })
