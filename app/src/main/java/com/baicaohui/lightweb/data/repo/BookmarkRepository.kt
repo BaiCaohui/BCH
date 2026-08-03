@@ -37,6 +37,11 @@ class BookmarkRepository(
         folderDao.delete(folder)
     }
 
+    suspend fun clearAll() {
+        bookmarkDao.clear()
+        folderDao.clear()
+    }
+
     suspend fun exportHtml(): String {
         val folders = folderDao.observe().first()
         val bookmarks = bookmarkDao.all()

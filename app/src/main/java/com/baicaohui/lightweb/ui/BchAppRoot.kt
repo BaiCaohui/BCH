@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
+import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
@@ -107,7 +108,16 @@ fun BchAppRoot() {
                 )
             }
             composable(BchRoute.BOOKMARKS.route) {
-                PlaceholderScreen(text = stringResource(R.string.empty_bookmarks))
+                BookmarksScreen(
+                    onOpenUrl = { url ->
+                        app.pendingUrl = url
+                        navController.navigate(BchRoute.BROWSER.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
             composable(BchRoute.HISTORY.route) {
                 PlaceholderScreen(text = stringResource(R.string.empty_history))

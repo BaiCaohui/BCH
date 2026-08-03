@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FolderDao {
+    @Query("DELETE FROM folders")
+    suspend fun clear()
+
     @Query("SELECT * FROM folders ORDER BY createdAt")
     fun observe(): Flow<List<FolderEntity>>
 
