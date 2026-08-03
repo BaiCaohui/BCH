@@ -37,16 +37,6 @@ class TabManagerTest {
     }
 
     @Test
-    fun `over limit evicts oldest`() {
-        val manager = TabManager(maxTabs = 2)
-        manager.newTab("https://a.com")
-        manager.newTab("https://b.com")
-        val c = manager.newTab("https://c.com")
-        assertEquals(listOf("https://b.com", "https://c.com"), manager.tabs.value.map { it.url })
-        assertEquals(c.id, manager.currentId.value)
-    }
-
-    @Test
     fun `update modifies tab fields`() {
         val manager = TabManager()
         val tab = manager.newTab("https://a.com")
@@ -92,15 +82,4 @@ class TabManagerTest {
         assertNull(manager.currentId.value)
     }
 
-    @Test
-    fun `setMaxTabs evicts until under limit`() {
-        val manager = TabManager(maxTabs = 4)
-        manager.newTab("https://a.com")
-        manager.newTab("https://b.com")
-        manager.newTab("https://c.com")
-        manager.newTab("https://d.com")
-        manager.setMaxTabs(2)
-        assertEquals(2, manager.tabs.value.size)
-        assertEquals(listOf("https://c.com", "https://d.com"), manager.tabs.value.map { it.url })
-    }
 }

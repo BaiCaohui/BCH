@@ -80,7 +80,6 @@ class BchApp : Application() {
         appScope.launch {
             browserPrefsStore.prefs.collect { prefs ->
                 currentBrowserPrefs = prefs
-                tabManager.setMaxTabs(prefs.maxTabs)
             }
         }
     }

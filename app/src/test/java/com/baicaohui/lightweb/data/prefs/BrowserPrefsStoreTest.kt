@@ -30,7 +30,6 @@ class BrowserPrefsStoreTest {
                 uaMode = UaMode.CUSTOM,
                 customUa = "BCH/1.0",
                 adLevel = "STRICT",
-                maxTabs = 6,
                 thirdPartyCookies = true,
                 toolbarPosition = ToolbarPosition.BOTTOM,
                 showReload = false,
@@ -41,7 +40,6 @@ class BrowserPrefsStoreTest {
         assertEquals(UaMode.CUSTOM, prefs.uaMode)
         assertEquals("BCH/1.0", prefs.customUa)
         assertEquals("STRICT", prefs.adLevel)
-        assertEquals(6, prefs.maxTabs)
         assertEquals(true, prefs.thirdPartyCookies)
         assertEquals(ToolbarPosition.BOTTOM, prefs.toolbarPosition)
         assertEquals(false, prefs.showReload)

@@ -128,7 +128,6 @@
     <string name="ad_off">关闭</string>
     <string name="ad_basic">基础</string>
     <string name="ad_strict">严格</string>
-    <string name="browse_max_tabs">最大标签页数</string>
     <string name="browse_js_default">默认启用 JavaScript</string>
     <string name="privacy_safe_browsing">Safe Browsing 安全浏览</string>
     <string name="privacy_third_party_cookies">拦截第三方 Cookie</string>

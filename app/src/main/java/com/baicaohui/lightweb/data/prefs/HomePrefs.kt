@@ -13,20 +13,22 @@ import kotlinx.serialization.json.Json
 
 private val Context.homeDataStore by preferencesDataStore(name = "home")
 
+private val json = Json { ignoreUnknownKeys = true }
+
 class HomePrefs(private val dataStore: DataStore<Preferences>) {
 
     val config: Flow<HomeConfig> = dataStore.data.map { prefs ->
-        prefs[Keys.CONFIG]?.let { json ->
-            runCatching { Json.decodeFromString<HomeConfig>(json) }.getOrNull()
+        prefs[Keys.CONFIG]?.let { raw ->
+            runCatching { json.decodeFromString<HomeConfig>(raw) }.getOrNull()
         } ?: HomeConfig.DEFAULT
     }
 
     suspend fun update(transform: (HomeConfig) -> HomeConfig) {
         dataStore.edit { prefs ->
-            val current = prefs[Keys.CONFIG]?.let { json ->
-                runCatching { Json.decodeFromString<HomeConfig>(json) }.getOrNull()
+            val current = prefs[Keys.CONFIG]?.let { raw ->
+                runCatching { json.decodeFromString<HomeConfig>(raw) }.getOrNull()
             } ?: HomeConfig.DEFAULT
-            prefs[Keys.CONFIG] = Json.encodeToString(HomeConfig.serializer(), transform(current))
+            prefs[Keys.CONFIG] = json.encodeToString(HomeConfig.serializer(), transform(current))
         }
     }
 

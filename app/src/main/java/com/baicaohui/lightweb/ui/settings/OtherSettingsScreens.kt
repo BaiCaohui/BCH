@@ -191,17 +191,6 @@ fun BrowseSettingsScreen() {
                 )
             }
         }
-        Spacer(Modifier.height(12.dp))
-        SectionTitle(stringResource(R.string.browse_max_tabs))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(6, 12, 24).forEach { max ->
-                FilterChip(
-                    selected = prefs.maxTabs == max,
-                    onClick = { update { it.copy(maxTabs = max) } },
-                    label = { Text("$max") },
-                )
-            }
-        }
         Spacer(Modifier.height(8.dp))
         SettingSwitch(
             stringResource(R.string.browse_js_default),

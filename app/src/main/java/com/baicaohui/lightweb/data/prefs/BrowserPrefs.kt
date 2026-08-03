@@ -19,7 +19,6 @@ data class BrowserPrefs(
     val uaMode: String = UaMode.DEFAULT,
     val customUa: String = "",
     val adLevel: String = "BASIC",
-    val maxTabs: Int = 12,
     val defaultJsEnabled: Boolean = true,
     val safeBrowsing: Boolean = true,
     val thirdPartyCookies: Boolean = false,

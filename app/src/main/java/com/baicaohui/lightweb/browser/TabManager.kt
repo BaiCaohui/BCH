@@ -15,10 +15,7 @@ data class Tab(
     val createdAt: Long = System.currentTimeMillis(),
 )
 
-class TabManager(maxTabs: Int = 12) {
-
-    private var maxTabs: Int = maxTabs
-
+class TabManager {
     private val _tabs = MutableStateFlow<List<Tab>>(emptyList())
     val tabs: StateFlow<List<Tab>> = _tabs.asStateFlow()
 
@@ -36,7 +33,6 @@ class TabManager(maxTabs: Int = 12) {
         val tab = Tab(id = id, url = url)
         _tabs.value = _tabs.value + tab
         accessOrder.addLast(id)
-        if (_tabs.value.size > maxTabs) evictOldest()
         _currentId.value = id
         return tab
     }
@@ -96,15 +92,4 @@ class TabManager(maxTabs: Int = 12) {
         _currentId.value = restored.last().id
     }
 
-    fun setMaxTabs(n: Int) {
-        maxTabs = n.coerceAtLeast(1)
-        while (_tabs.value.size > maxTabs) {
-            evictOldest()
-        }
-    }
-
-    private fun evictOldest() {
-        val victim = accessOrder.firstOrNull() ?: return
-        closeTab(victim)
-    }
 }
