@@ -29,9 +29,14 @@
 - `data/prefs/`：DataStore 配置（主题/主页/浏览偏好）
 - `ui/`：Compose 界面与导航
 
-## 已知范围边界（截至 M1）
 ## 范围边界（截至 M4）
 - 多 WebView 按 Tab 独立承载（`WebViewStore` LRU 销毁），冷启动恢复标签列表（URL+标题）
 - Room 数据层：书签（文件夹/导入导出）、历史（按天分组）、快捷拨号、站点设置
 - 主页组件化：搜索/快捷拨号/最近访问/书签/时钟 + 背景与遮罩 + 编辑页
 - 设置全量自定义：外观（预设/HSV/动态取色/深色/字号/圆角/密度）、工具栏、搜索引擎、浏览、隐私清除、站点设置、关于
+
+## 发布清单（M5 后）
+- release 产物为 `app-release-unsigned.apk`（约 1.8MB）；上架/装机前需配置 `signingConfigs` 签名
+- 版本号：`versionCode=1 / versionName=0.1.0`（发布前按需递增）
+- 真机冒烟清单见各里程碑计划文档验收项
+- 单测 43 个用例全绿（`GRADLE_USER_HOME=D:\gradle-home` 前提下）
