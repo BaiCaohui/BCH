@@ -65,4 +65,30 @@ class TabManagerTest {
         assertNull(manager.currentId.value)
         assertNull(manager.current)
     }
+
+    @Test
+    fun `snapshots and restore roundtrip`() {
+        val manager = TabManager()
+        val a = manager.newTab("https://a.com")
+        manager.update(a.id) { it.copy(title = "A", status = TabStatus.READY, progress = 100) }
+        val b = manager.newTab("https://b.com")
+
+        val restored = TabManager()
+        restored.restore(manager.snapshots())
+
+        assertEquals(manager.tabs.value.map { it.url }, restored.tabs.value.map { it.url })
+        assertEquals(manager.tabs.value.map { it.title }, restored.tabs.value.map { it.title })
+        assertEquals(b.id, restored.currentId.value)
+
+        val c = restored.newTab("https://c.com")
+        assertEquals(listOf(a.id, b.id, c.id), restored.tabs.value.map { it.id })
+    }
+
+    @Test
+    fun `restore empty list is no-op`() {
+        val manager = TabManager()
+        manager.restore(emptyList())
+        assertEquals(0, manager.tabs.value.size)
+        assertNull(manager.currentId.value)
+    }
 }

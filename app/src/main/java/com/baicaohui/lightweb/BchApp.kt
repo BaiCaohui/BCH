@@ -1,9 +1,19 @@
 package com.baicaohui.lightweb
 
 import android.app.Application
+import com.baicaohui.lightweb.browser.SessionStore
 import com.baicaohui.lightweb.browser.AdBlocker
 import com.baicaohui.lightweb.browser.TabManager
+import com.baicaohui.lightweb.data.db.AppDatabase
 import com.baicaohui.lightweb.data.prefs.ThemePrefs
+import com.baicaohui.lightweb.data.repo.BookmarkRepository
+import com.baicaohui.lightweb.data.repo.HistoryRepository
+import com.baicaohui.lightweb.data.repo.ShortcutRepository
+import com.baicaohui.lightweb.data.repo.SiteSettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class BchApp : Application() {
 
@@ -17,8 +27,23 @@ class BchApp : Application() {
     @Volatile
     var pendingUrl: String? = null
 
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    val database: AppDatabase by lazy { AppDatabase.get(this) }
+    val bookmarkRepository by lazy {
+        BookmarkRepository(database.bookmarkDao(), database.folderDao())
+    }
+    val historyRepository by lazy { HistoryRepository(database.historyDao()) }
+    val shortcutRepository by lazy { ShortcutRepository(database.shortcutDao()) }
+    val siteSettingsRepository by lazy { SiteSettingsRepository(database.siteSettingDao()) }
+
     override fun onCreate() {
         super.onCreate()
         themePrefs = ThemePrefs.create(this)
+        val sessionStore = SessionStore(getSharedPreferences("session", MODE_PRIVATE))
+        sessionStore.load()?.let { tabManager.restore(it) }
+        appScope.launch {
+            tabManager.tabs.collect { tabManager.snapshots().let(sessionStore::save) }
+        }
     }
 }

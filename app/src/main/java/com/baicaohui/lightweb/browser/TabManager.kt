@@ -65,6 +65,35 @@ class TabManager(private val maxTabs: Int = 12) {
         }
     }
 
+    fun snapshots(): List<TabSnapshot> = _tabs.value.map {
+        TabSnapshot(
+            id = it.id,
+            url = it.url,
+            title = it.title,
+            status = it.status.name,
+            createdAt = it.createdAt,
+        )
+    }
+
+    fun restore(snapshots: List<TabSnapshot>) {
+        if (snapshots.isEmpty()) return
+        val restored = snapshots.map {
+            Tab(
+                id = it.id,
+                url = it.url,
+                title = it.title,
+                status = runCatching { TabStatus.valueOf(it.status) }.getOrDefault(TabStatus.EMPTY),
+                progress = if (it.url.isBlank()) 0 else 100,
+                createdAt = it.createdAt,
+            )
+        }
+        _tabs.value = restored
+        accessOrder.clear()
+        accessOrder.addAll(restored.map { it.id })
+        nextId = (restored.maxOfOrNull { it.id } ?: 0L) + 1
+        _currentId.value = restored.last().id
+    }
+
     private fun evictOldest() {
         val victim = accessOrder.firstOrNull() ?: return
         closeTab(victim)
