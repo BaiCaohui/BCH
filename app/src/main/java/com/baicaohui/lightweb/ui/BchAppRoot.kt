@@ -75,7 +75,10 @@ fun BchAppRoot() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(BchRoute.BROWSER.route) {
-                BrowserScreen(initialUrl = app.pendingUrl.also { app.pendingUrl = null })
+                BrowserScreen(
+                    initialUrl = app.pendingUrl.also { app.pendingUrl = null },
+                    onOpenTabs = { navController.navigate(BchRoute.TABS.route) },
+                )
             }
             composable(BchRoute.TABS.route) {
                 PlaceholderScreen(text = stringResource(R.string.empty_tabs))

@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,10 +31,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
-import com.baicaohui.lightweb.browser.AdLevel
-import com.baicaohui.lightweb.browser.BrowserWebView
 import com.baicaohui.lightweb.browser.DownloadHandler
 import com.baicaohui.lightweb.browser.PermissionMapping
+import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.browser.WebCallbacks
 import com.baicaohui.lightweb.ui.components.ErrorPage
@@ -41,12 +41,15 @@ import com.baicaohui.lightweb.ui.components.ErrorPage
 private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 
 @Composable
-fun BrowserScreen(initialUrl: String? = null) {
+fun BrowserScreen(
+    initialUrl: String? = null,
+    onOpenTabs: () -> Unit = {},
+) {
     val context = LocalContext.current
     val app = context.applicationContext as BchApp
     val viewModel: BrowserViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { BrowserViewModel(app.tabManager) }
+            initializer { BrowserViewModel(app.tabManager, app.historyRepository) }
         },
     )
     val tabs by viewModel.tabs.collectAsStateWithLifecycle()
@@ -57,48 +60,48 @@ fun BrowserScreen(initialUrl: String? = null) {
     var pendingExternal by remember { mutableStateOf<String?>(null) }
     var pendingSsl by remember { mutableStateOf<Pair<String, SslErrorHandler>?>(null) }
     var pendingPermission by remember { mutableStateOf<PermissionRequest?>(null) }
-    var webView by remember { mutableStateOf<BrowserWebView?>(null) }
 
     val downloadHandler = remember { DownloadHandler(context) }
+    val webViewStore = app.webViewStore
 
-    val callbacks = remember(viewModel) {
-        object : WebCallbacks {
-            override fun onProgress(progress: Int) = viewModel.onProgress(progress)
+    fun tabCallbacks(tabId: Long) = object : WebCallbacks {
+        override fun onProgress(progress: Int) = viewModel.onProgress(tabId, progress)
 
-            override fun onPageStarted(url: String) {
-                viewModel.onPageStarted(url)
-                addressText = url
-            }
-
-            override fun onPageFinished(url: String) = viewModel.onPageFinished(url)
-
-            override fun onTitleChanged(title: String) = viewModel.onTitle(title)
-
-            override fun onDownloadStart(
-                url: String,
-                userAgent: String,
-                contentDisposition: String?,
-                mimeType: String?,
-            ) = viewModel.onDownload(url, userAgent, mimeType)
-
-            override fun onPermissionRequest(request: PermissionRequest) =
-                viewModel.onPermissionRequest(request)
-
-            override fun onExternalScheme(url: String) = viewModel.onExternalScheme(url)
-
-            override fun onMainFrameError(failingUrl: String, code: Int, description: String) =
-                viewModel.onError(failingUrl)
-
-            override fun onSslError(url: String, handler: SslErrorHandler) =
-                viewModel.onSslError(url, handler)
+        override fun onPageStarted(url: String) {
+            viewModel.onPageStarted(tabId, url)
+            webViewStore.markLoaded(tabId, url)
+            if (tabId == viewModel.currentId.value) addressText = url
         }
+
+        override fun onPageFinished(url: String) = viewModel.onPageFinished(tabId, url)
+
+        override fun onTitleChanged(title: String) = viewModel.onTitle(tabId, title)
+
+        override fun onDownloadStart(
+            url: String,
+            userAgent: String,
+            contentDisposition: String?,
+            mimeType: String?,
+        ) = viewModel.onDownload(url, userAgent, mimeType)
+
+        override fun onPermissionRequest(request: PermissionRequest) =
+            viewModel.onPermissionRequest(request)
+
+        override fun onExternalScheme(url: String) = viewModel.onExternalScheme(url)
+
+        override fun onMainFrameError(failingUrl: String, code: Int, description: String) =
+            viewModel.onError(tabId, failingUrl)
+
+        override fun onSslError(url: String, handler: SslErrorHandler) =
+            viewModel.onSslError(url, handler)
     }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is BrowserEvent.Reload -> webView?.reload()
-                is BrowserEvent.Navigate -> webView?.loadUrl(event.url)
+                is BrowserEvent.Reload ->
+                    webViewStore.get(viewModel.currentId.value ?: return@collect)?.reload()
+                is BrowserEvent.Navigate -> Unit
                 is BrowserEvent.Download -> {
                     downloadHandler.start(event.url, event.userAgent, event.mimeType)
                     Toast.makeText(context, R.string.download_started, Toast.LENGTH_SHORT).show()
@@ -110,6 +113,20 @@ fun BrowserScreen(initialUrl: String? = null) {
         }
     }
 
+    LaunchedEffect(tabs) {
+        webViewStore.destroyRemoved(tabs.map { it.id }.toSet())
+    }
+
+    LaunchedEffect(Unit) {
+        if (!initialUrl.isNullOrBlank()) {
+            viewModel.submitInput(initialUrl, SEARCH_TEMPLATE)
+        }
+    }
+
+    LaunchedEffect(activeTab?.id) {
+        addressText = activeTab?.url.orEmpty()
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { grants ->
@@ -118,22 +135,19 @@ fun BrowserScreen(initialUrl: String? = null) {
         pendingPermission = null
     }
 
-    val canGoBack = webView?.canGoBack() == true
-    BackHandler(enabled = canGoBack) { webView?.goBack() }
-
-    LaunchedEffect(activeTab?.id, activeTab?.url) {
-        if (activeTab?.url.isNullOrBlank()) addressText = ""
-    }
+    val currentWebView = currentId?.let { webViewStore.get(it) }
+    val canGoBack = currentWebView?.canGoBack() == true
+    BackHandler(enabled = canGoBack) { currentWebView?.goBack() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         BrowserToolbar(
             canGoBack = canGoBack,
-            canGoForward = webView?.canGoForward() == true,
+            canGoForward = currentWebView?.canGoForward() == true,
             tabCount = tabs.size,
-            onBack = { webView?.goBack() },
-            onForward = { webView?.goForward() },
-            onReload = { webView?.reload() },
-            onTabs = { /* M2 打开标签页总览 */ },
+            onBack = { currentWebView?.goBack() },
+            onForward = { currentWebView?.goForward() },
+            onReload = { currentWebView?.reload() },
+            onTabs = onOpenTabs,
         )
         AddressBar(
             value = addressText,
@@ -144,37 +158,29 @@ fun BrowserScreen(initialUrl: String? = null) {
             progress = activeTab?.progress ?: 0,
         )
         Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { ctx ->
-                    BrowserWebView(
-                        context = ctx,
-                        callbacks = callbacks,
-                        adBlocker = app.adBlocker,
-                        adLevel = { AdLevel.BASIC },
-                    ).also { wv ->
-                        webView = wv
-                        if (!initialUrl.isNullOrBlank()) {
-                            viewModel.submitInput(initialUrl, SEARCH_TEMPLATE)
-                        } else {
-                            val target = viewModel.tabs.value
-                                .firstOrNull { it.id == viewModel.currentId.value }
-                                ?.url
-                            if (!target.isNullOrBlank()) wv.loadUrl(target)
-                        }
-                    }
-                },
-                update = {},
-                modifier = Modifier.fillMaxSize(),
-            )
-            val showStartPage = activeTab == null ||
-                (activeTab.status == TabStatus.EMPTY && activeTab.url.isBlank())
+            val tab = activeTab
+            if (tab != null) {
+                key(tab.id) {
+                    AndroidView(
+                        factory = { ctx ->
+                            webViewStore.getOrCreate(tab.id, ctx, tabCallbacks(tab.id))
+                        },
+                        update = { wv ->
+                            webViewStore.ensureLoaded(tab.id, tab.url)
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            val showStartPage = tab == null ||
+                (tab.status == TabStatus.EMPTY && tab.url.isBlank())
             if (showStartPage) {
                 StartPage(
                     onSearch = { viewModel.submitInput(it, SEARCH_TEMPLATE) },
                     modifier = Modifier.matchParentSize(),
                 )
             }
-            if (activeTab?.status == TabStatus.ERROR) {
+            if (tab?.status == TabStatus.ERROR) {
                 ErrorPage(
                     onRetry = viewModel::retry,
                     modifier = Modifier.matchParentSize(),

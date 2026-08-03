@@ -7,13 +7,17 @@ import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabManager
 import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.browser.UrlSecurity
+import com.baicaohui.lightweb.data.repo.HistoryRecorder
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
-class BrowserViewModel(private val tabManager: TabManager) : ViewModel() {
+class BrowserViewModel(
+    private val tabManager: TabManager,
+    private val historyRecorder: HistoryRecorder,
+) : ViewModel() {
 
     val tabs: StateFlow<List<Tab>> = tabManager.tabs
     val currentId: StateFlow<Long?> = tabManager.currentId
@@ -49,19 +53,23 @@ class BrowserViewModel(private val tabManager: TabManager) : ViewModel() {
         emit(BrowserEvent.Reload)
     }
 
-    fun onProgress(progress: Int) = updateCurrent { it.copy(progress = progress) }
+    fun onProgress(tabId: Long, progress: Int) = tabManager.update(tabId) { it.copy(progress = progress) }
 
-    fun onPageStarted(url: String) = updateCurrent {
+    fun onPageStarted(tabId: Long, url: String) = tabManager.update(tabId) {
         it.copy(url = url, status = TabStatus.LOADING, progress = 10)
     }
 
-    fun onPageFinished(url: String) = updateCurrent {
-        it.copy(url = url, status = TabStatus.READY, progress = 100)
+    fun onPageFinished(tabId: Long, url: String) {
+        tabManager.update(tabId) {
+            it.copy(url = url, status = TabStatus.READY, progress = 100)
+        }
+        val title = tabManager.tabs.value.firstOrNull { it.id == tabId }?.title.orEmpty()
+        viewModelScope.launch { historyRecorder.record(url, title) }
     }
 
-    fun onTitle(title: String) = updateCurrent { it.copy(title = title) }
+    fun onTitle(tabId: Long, title: String) = tabManager.update(tabId) { it.copy(title = title) }
 
-    fun onError(failingUrl: String) = updateCurrent {
+    fun onError(tabId: Long, failingUrl: String) = tabManager.update(tabId) {
         it.copy(status = TabStatus.ERROR, progress = 100)
     }
 

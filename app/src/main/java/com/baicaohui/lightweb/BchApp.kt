@@ -4,6 +4,8 @@ import android.app.Application
 import com.baicaohui.lightweb.browser.SessionStore
 import com.baicaohui.lightweb.browser.AdBlocker
 import com.baicaohui.lightweb.browser.TabManager
+import com.baicaohui.lightweb.browser.WebViewStore
+import com.baicaohui.lightweb.browser.AdLevel
 import com.baicaohui.lightweb.data.db.AppDatabase
 import com.baicaohui.lightweb.data.prefs.ThemePrefs
 import com.baicaohui.lightweb.data.repo.BookmarkRepository
@@ -36,6 +38,7 @@ class BchApp : Application() {
     val historyRepository by lazy { HistoryRepository(database.historyDao()) }
     val shortcutRepository by lazy { ShortcutRepository(database.shortcutDao()) }
     val siteSettingsRepository by lazy { SiteSettingsRepository(database.siteSettingDao()) }
+    val webViewStore by lazy { WebViewStore(adBlocker) { AdLevel.BASIC } }
 
     override fun onCreate() {
         super.onCreate()
