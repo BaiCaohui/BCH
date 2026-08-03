@@ -20,18 +20,12 @@ import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
-import com.baicaohui.lightweb.ui.home.HomeScreen
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 
 @Composable
 fun BchAppRoot() {
     val context = LocalContext.current
     val app = context.applicationContext as BchApp
-    val startDestination = if (app.pendingUrl.isNullOrBlank()) {
-        BchRoute.HOME.route
-    } else {
-        BchRoute.BROWSER.route
-    }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -39,45 +33,47 @@ fun BchAppRoot() {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute in bottomRoutes.map { it.route }) {
-                NavigationBar {
-                    bottomRoutes.forEach { dest ->
-                        NavigationBarItem(
-                            selected = currentRoute == dest.route,
-                            onClick = {
+            NavigationBar {
+                bottomRoutes.forEach { dest ->
+                    NavigationBarItem(
+                        selected = if (dest == BchRoute.HOME) {
+                            currentRoute == BchRoute.BROWSER.route
+                        } else {
+                            currentRoute == dest.route
+                        },
+                        onClick = {
+                            if (dest == BchRoute.HOME) {
+                                app.tabManager.newTab("")
+                                navController.navigate(BchRoute.BROWSER.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            } else {
                                 navController.navigate(dest.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = dest.icon!!,
-                                    contentDescription = stringResource(dest.labelRes),
-                                )
-                            },
-                            label = { Text(stringResource(dest.labelRes)) },
-                        )
-                    }
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = dest.icon!!,
+                                contentDescription = stringResource(dest.labelRes),
+                            )
+                        },
+                        label = { Text(stringResource(dest.labelRes)) },
+                    )
                 }
             }
         },
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = BchRoute.BROWSER.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(BchRoute.HOME.route) {
-                HomeScreen(
-                    onSearch = { query ->
-                        app.pendingUrl = query
-                        navController.navigate(BchRoute.BROWSER.route)
-                    },
-                    onNavigate = { route -> navController.navigate(route) },
-                )
-            }
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(initialUrl = app.pendingUrl.also { app.pendingUrl = null })
             }

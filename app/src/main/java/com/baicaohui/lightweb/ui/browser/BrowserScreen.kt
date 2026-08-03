@@ -121,6 +121,10 @@ fun BrowserScreen(initialUrl: String? = null) {
     val canGoBack = webView?.canGoBack() == true
     BackHandler(enabled = canGoBack) { webView?.goBack() }
 
+    LaunchedEffect(activeTab?.id, activeTab?.url) {
+        if (activeTab?.url.isNullOrBlank()) addressText = ""
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         BrowserToolbar(
             canGoBack = canGoBack,
