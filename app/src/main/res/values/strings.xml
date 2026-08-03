@@ -108,7 +108,7 @@
     <string name="appearance_standard">标准</string>
     <string name="appearance_rounded">圆润</string>
     <string name="appearance_density">紧凑模式</string>
-    <string name="toolbar_position">工具栏位置</string>
+    <string name="toolbar_position">搜索栏位置</string>
     <string name="toolbar_buttons">按钮</string>
     <string name="toolbar_top">顶部</string>
     <string name="toolbar_bottom">底部</string>
