@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -178,7 +179,11 @@ fun BrowserScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         val topBar = @Composable {
-            Column(modifier = Modifier.statusBarsPadding()) {
+            Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) {
                 if (!online) {
                     Surface(color = MaterialTheme.colorScheme.errorContainer) {
                         Text(
@@ -214,7 +219,7 @@ fun BrowserScreen(
         if (!showStartPage && browserPrefs.toolbarPosition == ToolbarPosition.TOP) {
             topBar()
         }
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f)) {
             val tab = activeTab
             if (tab != null) {
                 key(tab.id) {
