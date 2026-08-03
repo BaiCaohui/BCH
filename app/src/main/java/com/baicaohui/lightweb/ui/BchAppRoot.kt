@@ -80,9 +80,8 @@ fun BchAppRoot() {
             (current.url.isBlank() && current.status == TabStatus.EMPTY)
         if (!onHomePage) app.tabManager.newTab("")
         navController.navigate(BchRoute.BROWSER.route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
             launchSingleTop = true
-            restoreState = true
         }
     }
 
