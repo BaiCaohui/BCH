@@ -25,6 +25,9 @@ interface FolderDao {
 
 @Dao
 interface BookmarkDao {
+    @Query("SELECT * FROM bookmarks ORDER BY folderId, orderIndex, createdAt")
+    suspend fun all(): List<BookmarkEntity>
+
     @Query("SELECT * FROM bookmarks WHERE folderId IS NULL ORDER BY orderIndex, createdAt")
     fun observeRoot(): Flow<List<BookmarkEntity>>
 
