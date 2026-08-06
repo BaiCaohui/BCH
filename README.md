@@ -30,6 +30,23 @@
 
 产物位于 `app/build/outputs/apk/`。发布前需配置 `signingConfigs` 签名。
 
+## 发布与签名
+
+`release/app-release-unsigned.apk` 为当前未签名 Release 产物（R8 混淆 + 资源压缩）。
+安装/上架前需要配置签名，请自行准备 keystore 并完成以下设置：
+
+1. 在项目根目录创建 `key.properties`（不入库）：
+   ```properties
+   storeFile=你的 keystore 路径
+   storePassword=你的密码
+   keyAlias=你的别名
+   keyPassword=你的密码
+   ```
+2. 在 `app/build.gradle.kts` 的 `android {}` 中读取 `key.properties` 并添加
+   `signingConfigs.release`，让 `buildTypes.release` 引用它。
+3. 按需更新 `versionCode` / `versionName`。
+4. 重新运行 `.\gradlew.bat :app:assembleRelease`，产物即为已签名 APK。
+
 ## 许可证
 
 Apache-2.0。阅读模式使用 Mozilla Readability（Apache-2.0）。
