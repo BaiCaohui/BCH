@@ -24,28 +24,23 @@
 
 ```powershell
 .\gradlew.bat :app:assembleDebug        # Debug APK
-.\gradlew.bat :app:assembleRelease      # Release APK（R8，未签名）
+.\gradlew.bat :app:assembleRelease      # Release APK（R8 + 已签名）
 .\gradlew.bat :app:testDebugUnitTest    # 单元测试（189 个用例）
 ```
 
-产物位于 `app/build/outputs/apk/`。发布前需配置 `signingConfigs` 签名。
+产物位于 `app/build/outputs/apk/`；已签名 Release 副本同步到 `release/app-release.apk`。
 
 ## 发布与签名
 
-`release/app-release-unsigned.apk` 为当前未签名 Release 产物（R8 混淆 + 资源压缩）。
-安装/上架前需要配置签名，请自行准备 keystore 并完成以下设置：
+`release/` 目录存放当前 Release 产物（R8 混淆 + 资源压缩）。签名配置已就绪：
 
-1. 在项目根目录创建 `key.properties`（不入库）：
-   ```properties
-   storeFile=你的 keystore 路径
-   storePassword=你的密码
-   keyAlias=你的别名
-   keyPassword=你的密码
-   ```
-2. 在 `app/build.gradle.kts` 的 `android {}` 中读取 `key.properties` 并添加
-   `signingConfigs.release`，让 `buildTypes.release` 引用它。
-3. 按需更新 `versionCode` / `versionName`。
-4. 重新运行 `.\gradlew.bat :app:assembleRelease`，产物即为已签名 APK。
+- `release.jks` 与 `key.properties` 位于项目根目录，两者均已加入 `.gitignore`，不会入库。
+- `app/build.gradle.kts` 会在 `key.properties` 存在时自动为 `release` 构建类型签名；
+  文件缺失时回退为未签名构建（不会导致构建失败）。
+- 重新运行 `.\gradlew.bat :app:assembleRelease` 即可生成已签名 APK。
+
+发布前按需更新 `versionCode` / `versionName`。请务必妥善保管 `release.jks` 与密码：
+丢失后无法再为已安装用户发布更新。
 
 ## 许可证
 

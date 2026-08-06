@@ -22,6 +22,7 @@ Thumbs.db
 captures/
 *.keystore
 *.jks
+key.properties
 
 # Local test fixtures (dummy files for download-risk manual tests)
 docs/reader-test/app.apk
