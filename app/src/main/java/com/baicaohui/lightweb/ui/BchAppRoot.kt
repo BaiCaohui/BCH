@@ -1,23 +1,34 @@
 package com.baicaohui.lightweb.ui
 
+import android.content.Intent
+import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,26 +46,39 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.baicaohui.lightweb.BchApp
+import com.baicaohui.lightweb.IncognitoActivity
 import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.data.prefs.BrowserPrefs
+import com.baicaohui.lightweb.data.prefs.UaMode
 import com.baicaohui.lightweb.ui.navigation.BchIcons
+import com.baicaohui.lightweb.ui.browser.MoreMenuSheet
+import com.baicaohui.lightweb.ui.browser.MoreMenuItem
+import com.baicaohui.lightweb.ui.browser.MenuOrder
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
+import com.baicaohui.lightweb.ui.browser.BrowserViewModel
+import com.baicaohui.lightweb.ui.browser.browserViewModelFactory
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
+import com.baicaohui.lightweb.ui.bookmarks.AddBookmarkDialog
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.components.TabCountIcon
+import com.baicaohui.lightweb.ui.console.ConsoleScreen
+import com.baicaohui.lightweb.ui.downloads.DownloadsScreen
 import com.baicaohui.lightweb.ui.history.HistoryScreen
 import com.baicaohui.lightweb.ui.home.HomeEditScreen
 import com.baicaohui.lightweb.ui.home.HomeConfig
 import com.baicaohui.lightweb.ui.navigation.BchRoute
 import com.baicaohui.lightweb.ui.settings.AboutScreen
+import com.baicaohui.lightweb.ui.settings.AdBlockSettingsScreen
 import com.baicaohui.lightweb.ui.settings.AppearanceScreen
 import com.baicaohui.lightweb.ui.settings.BrowseSettingsScreen
 import com.baicaohui.lightweb.ui.settings.PrivacyScreen
 import com.baicaohui.lightweb.ui.settings.SearchEngineScreen
 import com.baicaohui.lightweb.ui.settings.SettingsScreen
+import com.baicaohui.lightweb.ui.settings.SiteDataScreen
 import com.baicaohui.lightweb.ui.settings.SiteSettingsScreen
 import com.baicaohui.lightweb.ui.settings.ToolbarSettingsScreen
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
@@ -72,9 +96,16 @@ fun BchAppRoot() {
     val currentTabId by app.tabManager.currentId.collectAsStateWithLifecycle()
     val tabCount by app.tabManager.tabs.collectAsStateWithLifecycle(initialValue = emptyList())
     val homeConfig by app.homePrefs.config.collectAsStateWithLifecycle(initialValue = HomeConfig.DEFAULT)
+    val folders by app.bookmarkRepository.folders.collectAsStateWithLifecycle(initialValue = emptyList())
+    val pageIcons by app.pageIcons.collectAsStateWithLifecycle()
+    val browserViewModel: BrowserViewModel = viewModel(
+        factory = browserViewModelFactory(app.tabManager, app.historyRepository, app.recentSearchStore),
+    )
     var menuOpen by remember { mutableStateOf(false) }
+    var bookmarkDraft by remember { mutableStateOf<BookmarkDraft?>(null) }
     val scope = rememberCoroutineScope()
     val currentTab = tabCount.firstOrNull { it.id == currentTabId }
+    var showUaPicker by remember { mutableStateOf(false) }
 
     fun goHome() {
         val current = app.tabManager.current
@@ -94,6 +125,130 @@ fun BchAppRoot() {
             restoreState = true
         }
     }
+
+    val menuItemsById = mapOf(
+        "reload" to MoreMenuItem(
+            id = "reload",
+            label = stringResource(R.string.action_reload),
+            icon = BchIcons.Refresh,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                val id = currentTabId
+                if (id != null) app.webViewStore.get(id)?.reload()
+            },
+        ),
+        "reader" to MoreMenuItem(
+            id = "reader",
+            label = stringResource(
+                if (currentTab?.readerMode == true) R.string.menu_reader_exit else R.string.menu_reader,
+            ),
+            icon = Icons.Filled.MenuBook,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            highlighted = currentTab?.readerMode == true,
+            onClick = {
+                menuOpen = false
+                browserViewModel.toggleReaderMode()
+            },
+        ),
+        "incognito" to MoreMenuItem(
+            id = "incognito",
+            label = stringResource(R.string.menu_incognito),
+            icon = Icons.Filled.VisibilityOff,
+            onClick = {
+                menuOpen = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    app.purgeIncognitoData()
+                    context.startActivity(Intent(context, IncognitoActivity::class.java))
+                } else {
+                    Toast.makeText(
+                        context,
+                        R.string.incognito_unsupported,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            },
+        ),
+        "ua" to MoreMenuItem(
+            id = "ua",
+            label = stringResource(R.string.menu_ua),
+            icon = Icons.Filled.Language,
+            onClick = {
+                menuOpen = false
+                showUaPicker = true
+            },
+        ),
+        "downloads" to MoreMenuItem(
+            id = "downloads",
+            label = stringResource(R.string.menu_downloads),
+            icon = Icons.Filled.Download,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.DOWNLOADS.route)
+            },
+        ),
+        "console" to MoreMenuItem(
+            id = "console",
+            label = stringResource(R.string.nav_console),
+            icon = Icons.Filled.Terminal,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.CONSOLE.route)
+            },
+        ),
+        "add_bookmark" to MoreMenuItem(
+            id = "add_bookmark",
+            label = stringResource(R.string.add_bookmark),
+            icon = Icons.Filled.Add,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                val tab = currentTab
+                val url = tab?.url.orEmpty()
+                if (url.isNotBlank() && tab != null) {
+                    bookmarkDraft = BookmarkDraft(
+                        title = tab.title.ifBlank { url },
+                        url = url,
+                        folderId = null,
+                        iconUrl = pageIcons[currentTabId],
+                    )
+                }
+            },
+        ),
+        "bookmarks" to MoreMenuItem(
+            id = "bookmarks",
+            label = stringResource(R.string.nav_bookmarks),
+            icon = Icons.Filled.Star,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.BOOKMARKS.route)
+            },
+        ),
+        "history" to MoreMenuItem(
+            id = "history",
+            label = stringResource(R.string.nav_history),
+            icon = Icons.Filled.DateRange,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.HISTORY.route)
+            },
+        ),
+        "settings" to MoreMenuItem(
+            id = "settings",
+            label = stringResource(R.string.nav_settings),
+            icon = Icons.Filled.Settings,
+            onClick = {
+                menuOpen = false
+                navController.navigate(BchRoute.SETTINGS.route) {
+                    popUpTo(navController.graph.findStartDestination().id)
+                    launchSingleTop = true
+                }
+            },
+        ),
+    )
+
+    val menuItems = MenuOrder.resolve(browserPrefs.menuItemOrder)
+        .mapNotNull { menuItemsById[it] }
 
     Scaffold(
         bottomBar = {
@@ -167,74 +322,6 @@ fun BchAppRoot() {
                             contentDescription = stringResource(R.string.bottom_menu_more),
                         )
                     }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_reload)) },
-                            enabled = currentTabId != null,
-                            leadingIcon = {
-                                Icon(BchIcons.Refresh, contentDescription = null)
-                            },
-                            onClick = {
-                                menuOpen = false
-                                app.webViewStore.get(currentTabId ?: return@DropdownMenuItem)?.reload()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.add_bookmark)) },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Add, contentDescription = null)
-                            },
-                            enabled = currentTab?.url?.isNotBlank() == true,
-                            onClick = {
-                                menuOpen = false
-                                val tab = currentTab ?: return@DropdownMenuItem
-                                val url = tab.url
-                                if (url.isNotBlank()) {
-                                    scope.launch {
-                                        app.bookmarkRepository.addBookmark(
-                                            tab.title.ifBlank { url },
-                                            url,
-                                            null,
-                                        )
-                                    }
-                                    Toast.makeText(context, R.string.bookmark_added, Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.nav_bookmarks)) },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Star, contentDescription = null)
-                            },
-                            onClick = {
-                                menuOpen = false
-                                navigateTo(BchRoute.BOOKMARKS.route)
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.nav_history)) },
-                            leadingIcon = {
-                                Icon(Icons.Filled.DateRange, contentDescription = null)
-                            },
-                            onClick = {
-                                menuOpen = false
-                                navigateTo(BchRoute.HISTORY.route)
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.nav_settings)) },
-                            leadingIcon = {
-                                Icon(Icons.Filled.Settings, contentDescription = null)
-                            },
-                            onClick = {
-                                menuOpen = false
-                                navController.navigate(BchRoute.SETTINGS.route) {
-                                    popUpTo(navController.graph.findStartDestination().id)
-                                    launchSingleTop = true
-                                }
-                            },
-                        )
-                    }
                 }
             }
         },
@@ -247,6 +334,7 @@ fun BchAppRoot() {
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(
                     initialUrl = app.pendingUrl.also { app.pendingUrl = null },
+                    sharedViewModel = browserViewModel,
                 )
             }
             composable(BchRoute.HOME_EDIT.route) { HomeEditScreen() }
@@ -310,7 +398,89 @@ fun BchAppRoot() {
             composable(BchRoute.BROWSE_SETTINGS.route) { BrowseSettingsScreen() }
             composable(BchRoute.PRIVACY.route) { PrivacyScreen() }
             composable(BchRoute.SITE_SETTINGS.route) { SiteSettingsScreen() }
+            composable(BchRoute.ADBLOCK.route) { AdBlockSettingsScreen() }
+            composable(BchRoute.SITE_DATA.route) { SiteDataScreen() }
             composable(BchRoute.ABOUT.route) { AboutScreen() }
+            composable(BchRoute.DOWNLOADS.route) { DownloadsScreen() }
+            composable(BchRoute.CONSOLE.route) { ConsoleScreen() }
+        }
+
+        if (menuOpen) {
+            MoreMenuSheet(
+                rows = browserPrefs.menuRows.coerceIn(1, 3),
+                items = menuItems,
+                onDismiss = { menuOpen = false },
+            )
+        }
+
+        if (showUaPicker) {
+            AlertDialog(
+                onDismissRequest = { showUaPicker = false },
+                title = { Text(stringResource(R.string.menu_ua_picker_title)) },
+                text = {
+                    Column {
+                        listOf(
+                            UaMode.ANDROID to R.string.ua_android,
+                            UaMode.IPHONE to R.string.ua_iphone,
+                            UaMode.DESKTOP to R.string.ua_desktop,
+                        ).forEach { (mode, labelRes) ->
+                            ListItem(
+                                headlineContent = { Text(stringResource(labelRes)) },
+                                trailingContent = {
+                                    if (browserPrefs.uaMode == mode) {
+                                        Icon(Icons.Filled.Check, contentDescription = null)
+                                    }
+                                },
+                                modifier = Modifier.clickable {
+                                    showUaPicker = false
+                                    scope.launch {
+                                        app.browserPrefsStore.update { it.copy(uaMode = mode) }
+                                    }
+                                    Toast.makeText(context, R.string.ua_switched, Toast.LENGTH_SHORT).show()
+                                    navigateTo(BchRoute.BROWSER.route)
+                                },
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showUaPicker = false }) {
+                        Text(stringResource(R.string.dialog_cancel))
+                    }
+                },
+            )
+        }
+
+        bookmarkDraft?.let { draft ->
+            AddBookmarkDialog(
+                initialTitle = draft.title,
+                initialUrl = draft.url,
+                initialIconUrl = draft.iconUrl,
+                initialFolderId = draft.folderId,
+                folders = folders,
+                confirmLabel = stringResource(R.string.bookmarks_add),
+                pageIconUrl = draft.iconUrl,
+                onConfirm = { title, url, folderId, iconUrl ->
+                    bookmarkDraft = null
+                    scope.launch {
+                        app.bookmarkRepository.addBookmark(
+                            title.ifBlank { url },
+                            url,
+                            folderId,
+                            iconUrl,
+                        )
+                    }
+                    Toast.makeText(context, R.string.bookmark_added, Toast.LENGTH_SHORT).show()
+                },
+                onDismiss = { bookmarkDraft = null },
+            )
         }
     }
 }
+
+private data class BookmarkDraft(
+    val title: String,
+    val url: String,
+    val folderId: Long?,
+    val iconUrl: String?,
+)

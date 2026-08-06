@@ -3,12 +3,14 @@ package com.baicaohui.lightweb.data.prefs
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import java.io.File
 
 private val Context.browserDataStore by preferencesDataStore(name = "browser")
 
@@ -17,19 +19,57 @@ private val json = Json { ignoreUnknownKeys = true }
 class BrowserPrefsStore(private val dataStore: DataStore<Preferences>) {
 
     val prefs: Flow<BrowserPrefs> = dataStore.data.map { prefs ->
-        prefs[Keys.PREFS]?.let { raw ->
-            runCatching { json.decodeFromString<BrowserPrefs>(raw) }.getOrNull()
-        } ?: BrowserPrefs.DEFAULT
+        val raw = prefs[Keys.PREFS]
+        if (raw == null) BrowserPrefs.DEFAULT else migrated(decode(raw))
     }
 
     suspend fun update(transform: (BrowserPrefs) -> BrowserPrefs) {
         dataStore.edit { prefs ->
-            val current = prefs[Keys.PREFS]?.let { raw ->
-                runCatching { json.decodeFromString<BrowserPrefs>(raw) }.getOrNull()
-            } ?: BrowserPrefs.DEFAULT
+            val current = prefs[Keys.PREFS]?.let { migrated(decode(it)) }
+                ?: migrated(BrowserPrefs.DEFAULT)
             prefs[Keys.PREFS] = json.encodeToString(BrowserPrefs.serializer(), transform(current))
         }
     }
+
+    private fun decode(raw: String): BrowserPrefs =
+        runCatching { json.decodeFromString<BrowserPrefs>(raw) }.getOrNull() ?: BrowserPrefs.DEFAULT
+
+    /** 旧版本默认关闭标签页预览；一次性迁移为开启，并写入版本号以便后续可被用户手动关闭。 */
+    private fun migrated(prefs: BrowserPrefs): BrowserPrefs =
+        when {
+            prefs.prefsVersion < 1 -> prefs.copy(
+                tabPreviewEnabled = true,
+                menuRows = 2,
+                downloadMode = DownloadMode.APP,
+                historySuggestionLimit = 2,
+                downloadLocation = DownloadLocation.PUBLIC,
+                prefsVersion = 5,
+            )
+            prefs.prefsVersion < 2 -> prefs.copy(
+                menuRows = 2,
+                downloadMode = DownloadMode.APP,
+                historySuggestionLimit = 2,
+                downloadLocation = DownloadLocation.PUBLIC,
+                prefsVersion = 5,
+            )
+            prefs.prefsVersion < 3 -> prefs.copy(
+                historySuggestionLimit = 2,
+                downloadLocation = DownloadLocation.PUBLIC,
+                prefsVersion = 5,
+            )
+            prefs.prefsVersion < 4 -> prefs.copy(
+                downloadLocation = DownloadLocation.PUBLIC,
+                prefsVersion = 5,
+            )
+            prefs.prefsVersion < 5 -> prefs.copy(
+                downloadLocation = DownloadLocation.PUBLIC,
+                prefsVersion = 5,
+            )
+            prefs.prefsVersion < 6 -> prefs.copy(
+                prefsVersion = 6,
+            )
+            else -> prefs
+        }
 
     private object Keys {
         val PREFS = stringPreferencesKey("prefs")
@@ -37,5 +77,11 @@ class BrowserPrefsStore(private val dataStore: DataStore<Preferences>) {
 
     companion object {
         fun create(context: Context): BrowserPrefsStore = BrowserPrefsStore(context.browserDataStore)
+
+        fun createIncognito(context: Context): BrowserPrefsStore = BrowserPrefsStore(
+            PreferenceDataStoreFactory.create {
+                IncognitoPrefsFiles.targetFile(File(context.filesDir, "datastore"), "browser")
+            },
+        )
     }
 }

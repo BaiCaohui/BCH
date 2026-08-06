@@ -1,5 +1,7 @@
 package com.baicaohui.lightweb.ui.home
 
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,7 +47,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.ui.theme.PRESET_SEEDS
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun HomeEditScreen() {
@@ -62,13 +67,18 @@ fun HomeEditScreen() {
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri != null) {
-            update {
-                it.copy(
-                    background = it.background.copy(
-                        type = BackgroundType.IMAGE,
-                        imageUri = uri.toString(),
-                    ),
-                )
+            scope.launch {
+                val saved = copyImageToPrivateStorage(context, uri)
+                if (saved != null) {
+                    update {
+                        it.copy(
+                            background = it.background.copy(
+                                type = BackgroundType.IMAGE,
+                                imageUri = saved.toString(),
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -214,6 +224,19 @@ fun HomeEditScreen() {
         )
     }
 }
+
+/** 把相册选中的图片复制到应用私有目录，避免重启后相册 URI 权限失效导致背景丢失。 */
+private suspend fun copyImageToPrivateStorage(context: Context, uri: Uri): Uri? =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val input = context.contentResolver.openInputStream(uri) ?: return@runCatching null
+            val file = File(context.filesDir, "home_background.jpg")
+            input.use { source ->
+                file.outputStream().use { target -> source.copyTo(target) }
+            }
+            Uri.fromFile(file)
+        }.getOrNull()
+    }
 
 private fun moveWidget(
     from: Int,

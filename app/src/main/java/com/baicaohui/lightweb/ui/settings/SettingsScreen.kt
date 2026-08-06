@@ -31,6 +31,8 @@ fun SettingsScreen(onNavigate: (String) -> Unit) {
             R.string.settings_browsing to BchRoute.BROWSE_SETTINGS.route,
             R.string.settings_privacy to BchRoute.PRIVACY.route,
             R.string.settings_site_settings to BchRoute.SITE_SETTINGS.route,
+            R.string.settings_adblock to BchRoute.ADBLOCK.route,
+            R.string.settings_site_data to BchRoute.SITE_DATA.route,
             R.string.settings_about to BchRoute.ABOUT.route,
         ).forEach { (labelRes, route) ->
             ListItem(

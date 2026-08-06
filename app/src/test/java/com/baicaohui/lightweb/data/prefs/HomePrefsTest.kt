@@ -36,7 +36,7 @@ class HomePrefsTest {
                 ),
                 background = it.background.copy(
                     type = BackgroundType.IMAGE,
-                    imageUri = "content://media/1",
+                    imageUri = "file:///data/user/0/com.baicaohui.lightweb/files/home_background.jpg",
                 ),
                 overlayAlpha = 0.3f,
             )
@@ -44,7 +44,24 @@ class HomePrefsTest {
         val config = prefs.config.first()
         assertEquals(listOf(HomeWidgetType.CLOCK, HomeWidgetType.SEARCH), config.widgets.map { w -> w.type })
         assertEquals(BackgroundType.IMAGE, config.background.type)
-        assertEquals("content://media/1", config.background.imageUri)
+        assertEquals(
+            "file:///data/user/0/com.baicaohui.lightweb/files/home_background.jpg",
+            config.background.imageUri,
+        )
         assertEquals(0.3f, config.overlayAlpha, 0.001f)
+    }
+
+    @Test
+    fun `content uri background is dropped on read after restart`() = runTest {
+        val prefs = newPrefs()
+        prefs.update {
+            it.copy(
+                background = it.background.copy(
+                    type = BackgroundType.IMAGE,
+                    imageUri = "content://media/1",
+                ),
+            )
+        }
+        assertEquals(null, prefs.config.first().background.imageUri)
     }
 }

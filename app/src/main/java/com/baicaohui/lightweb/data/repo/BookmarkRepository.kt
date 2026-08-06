@@ -14,15 +14,36 @@ class BookmarkRepository(
 ) {
     val folders: Flow<List<FolderEntity>> = folderDao.observe()
 
+    val allBookmarks: Flow<List<BookmarkEntity>> = bookmarkDao.observeAll()
+
     fun bookmarks(folderId: Long?): Flow<List<BookmarkEntity>> =
         if (folderId == null) bookmarkDao.observeRoot() else bookmarkDao.observeByFolder(folderId)
 
-    suspend fun addBookmark(title: String, url: String, folderId: Long?): Long {
+    suspend fun addBookmark(
+        title: String,
+        url: String,
+        folderId: Long?,
+        iconUrl: String? = null,
+    ): Long {
         val existing = bookmarkDao.findByUrl(url)
         return if (existing != null) {
+            bookmarkDao.update(
+                existing.copy(
+                    title = title.ifBlank { existing.title },
+                    folderId = folderId,
+                    iconUrl = iconUrl ?: existing.iconUrl,
+                ),
+            )
             existing.id
         } else {
-            bookmarkDao.insert(BookmarkEntity(title = title, url = url, folderId = folderId))
+            bookmarkDao.insert(
+                BookmarkEntity(
+                    title = title,
+                    url = url,
+                    folderId = folderId,
+                    iconUrl = iconUrl,
+                ),
+            )
         }
     }
 
@@ -31,6 +52,9 @@ class BookmarkRepository(
     suspend fun deleteBookmark(bookmark: BookmarkEntity) = bookmarkDao.delete(bookmark)
 
     suspend fun addFolder(name: String): Long = folderDao.insert(FolderEntity(name = name))
+
+    suspend fun renameFolder(folder: FolderEntity, name: String) =
+        folderDao.update(folder.copy(name = name))
 
     suspend fun deleteFolder(folder: FolderEntity) {
         bookmarkDao.deleteByFolder(folder.id)

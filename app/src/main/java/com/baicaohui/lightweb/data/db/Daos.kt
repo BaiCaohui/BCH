@@ -31,6 +31,9 @@ interface BookmarkDao {
     @Query("SELECT * FROM bookmarks ORDER BY folderId, orderIndex, createdAt")
     suspend fun all(): List<BookmarkEntity>
 
+    @Query("SELECT * FROM bookmarks ORDER BY folderId, orderIndex, createdAt")
+    fun observeAll(): Flow<List<BookmarkEntity>>
+
     @Query("SELECT * FROM bookmarks WHERE folderId IS NULL ORDER BY orderIndex, createdAt")
     fun observeRoot(): Flow<List<BookmarkEntity>>
 
@@ -76,6 +79,9 @@ interface HistoryDao {
     @Query("DELETE FROM history WHERE url = :url")
     suspend fun deleteByUrl(url: String)
 
+    @Query("DELETE FROM history WHERE url LIKE :pattern ESCAPE '\\'")
+    suspend fun deleteByHost(pattern: String)
+
     @Query("DELETE FROM history")
     suspend fun clear()
 }
@@ -116,5 +122,41 @@ interface SiteSettingDao {
     suspend fun delete(setting: SiteSettingEntity)
 
     @Query("DELETE FROM site_settings")
+    suspend fun clear()
+}
+
+@Dao
+interface DownloadDao {
+    @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
+    fun observeAll(): Flow<List<DownloadEntity>>
+
+    @Insert
+    suspend fun insert(entity: DownloadEntity): Long
+
+    @Update
+    suspend fun update(entity: DownloadEntity)
+
+    @Delete
+    suspend fun delete(entity: DownloadEntity)
+
+    @Query("DELETE FROM downloads")
+    suspend fun clear()
+}
+
+@Dao
+interface ReaderCacheDao {
+    @Query("SELECT * FROM reader_cache WHERE url = :url LIMIT 1")
+    suspend fun get(url: String): ReaderCacheEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: ReaderCacheEntity)
+
+    @Query("DELETE FROM reader_cache WHERE url = :url")
+    suspend fun delete(url: String)
+
+    @Query("DELETE FROM reader_cache WHERE url LIKE :pattern ESCAPE '\\'")
+    suspend fun deleteByHost(pattern: String)
+
+    @Query("DELETE FROM reader_cache")
     suspend fun clear()
 }

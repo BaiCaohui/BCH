@@ -16,3 +16,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Android artifacts
+*.hprof
+captures/
+*.keystore
+*.jks
+
+# Local test fixtures (dummy files for download-risk manual tests)
+docs/reader-test/app.apk
+docs/reader-test/doc.pdf

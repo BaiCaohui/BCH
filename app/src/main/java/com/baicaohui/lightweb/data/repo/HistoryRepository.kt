@@ -27,5 +27,10 @@ class HistoryRepository(private val dao: HistoryDao) : HistoryRecorder {
 
     suspend fun delete(url: String) = dao.deleteByUrl(url)
 
+    suspend fun deleteByHost(host: String) = dao.deleteByHost(likePattern(host))
+
     suspend fun clear() = dao.clear()
+
+    private fun likePattern(host: String): String =
+        "%" + host.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 }

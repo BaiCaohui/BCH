@@ -47,7 +47,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.data.db.BookmarkEntity
+import com.baicaohui.lightweb.data.db.FolderEntity
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
+import com.baicaohui.lightweb.ui.home.Favicon
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -60,16 +62,22 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
 
     val folders by repo.folders.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedFolderId by remember { mutableStateOf<Long?>(null) }
-    val bookmarks by repo.bookmarks(selectedFolderId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val bookmarks by remember(selectedFolderId) {
+        if (selectedFolderId == null) repo.allBookmarks else repo.bookmarks(selectedFolderId)
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var selectionMode by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<Long>() }
     var showAddDialog by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<BookmarkEntity?>(null) }
     var showFolderDialog by remember { mutableStateOf(false) }
+    var showFolderManage by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var itemMenu by remember { mutableStateOf<BookmarkEntity?>(null) }
+    var moveTargets by remember { mutableStateOf<List<BookmarkEntity>?>(null) }
+    var folderToRename by remember { mutableStateOf<FolderEntity?>(null) }
+    var folderToDelete by remember { mutableStateOf<FolderEntity?>(null) }
 
     fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
 
@@ -117,6 +125,15 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                     modifier = Modifier.weight(1f),
                 )
                 if (selectionMode) {
+                    if (selectedIds.isNotEmpty()) {
+                        TextButton(onClick = {
+                            moveTargets = bookmarks.filter { it.id in selectedIds }
+                            selectedIds.clear()
+                            selectionMode = false
+                        }) {
+                            Text(stringResource(R.string.bookmarks_move))
+                        }
+                    }
                     TextButton(onClick = {
                         if (selectedIds.isNotEmpty()) {
                             scope.launch {
@@ -146,6 +163,10 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.bookmarks_add_folder)) },
                                 onClick = { menuOpen = false; showFolderDialog = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.bookmarks_manage_folders)) },
+                                onClick = { menuOpen = false; showFolderManage = true },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.bookmarks_import)) },
@@ -210,6 +231,13 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                                             else selectedIds.add(bookmark.id)
                                         },
                                     )
+                                } else {
+                                    Favicon(
+                                        url = bookmark.url,
+                                        title = bookmark.title,
+                                        iconUrl = bookmark.iconUrl,
+                                        size = 40.dp,
+                                    )
                                 }
                             },
                             headlineContent = {
@@ -233,14 +261,19 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
     }
 
     if (showAddDialog) {
-        BookmarkEditDialog(
+        AddBookmarkDialog(
             initialTitle = "",
             initialUrl = "",
+            initialIconUrl = null,
+            initialFolderId = selectedFolderId,
+            folders = folders,
             confirmLabel = stringResource(R.string.bookmarks_add),
-            onConfirm = { title, url ->
+            onConfirm = { title, url, folderId, iconUrl ->
                 showAddDialog = false
                 if (url.isNotBlank()) {
-                    scope.launch { repo.addBookmark(title.ifBlank { url }, url, selectedFolderId) }
+                    scope.launch {
+                        repo.addBookmark(title.ifBlank { url }, url, folderId, iconUrl)
+                    }
                 }
             },
             onDismiss = { showAddDialog = false },
@@ -248,15 +281,25 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
     }
 
     editing?.let { bookmark ->
-        BookmarkEditDialog(
+        AddBookmarkDialog(
             initialTitle = bookmark.title,
             initialUrl = bookmark.url,
+            initialIconUrl = bookmark.iconUrl,
+            initialFolderId = bookmark.folderId,
+            folders = folders,
             confirmLabel = stringResource(R.string.bookmarks_edit),
-            onConfirm = { title, url ->
+            onConfirm = { title, url, folderId, iconUrl ->
                 editing = null
                 if (url.isNotBlank()) {
                     scope.launch {
-                        repo.updateBookmark(bookmark.copy(title = title.ifBlank { url }, url = url))
+                        repo.updateBookmark(
+                            bookmark.copy(
+                                title = title.ifBlank { url },
+                                url = url,
+                                folderId = folderId,
+                                iconUrl = iconUrl,
+                            ),
+                        )
                     }
                 }
             },
@@ -278,6 +321,13 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                 onClick = {
                     itemMenu = null
                     scope.launch { repo.deleteBookmark(bookmark) }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.bookmarks_move)) },
+                onClick = {
+                    itemMenu = null
+                    moveTargets = listOf(bookmark)
                 },
             )
         }
@@ -309,6 +359,63 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                 scope.launch { repo.clearAll() }
             },
             onDismiss = { showClearConfirm = false },
+        )
+    }
+
+    moveTargets?.let { targets ->
+        FolderPickerDialog(
+            folders = folders,
+            selectedFolderId = null,
+            onSelect = { folderId, _ ->
+                moveTargets = null
+                scope.launch {
+                    targets.forEach { repo.updateBookmark(it.copy(folderId = folderId)) }
+                }
+                toast(context.getString(R.string.bookmarks_moved))
+            },
+            onDismiss = { moveTargets = null },
+        )
+    }
+
+    if (showFolderManage) {
+        FolderManageDialog(
+            folders = folders,
+            onRename = { folder ->
+                showFolderManage = false
+                folderToRename = folder
+            },
+            onDelete = { folder ->
+                showFolderManage = false
+                folderToDelete = folder
+            },
+            onDismiss = { showFolderManage = false },
+        )
+    }
+
+    folderToRename?.let { folder ->
+        TextInputDialog(
+            title = stringResource(R.string.bookmarks_rename),
+            confirmLabel = stringResource(R.string.bookmarks_rename),
+            initial = folder.name,
+            onConfirm = { name ->
+                folderToRename = null
+                if (name.isNotBlank()) {
+                    scope.launch { repo.renameFolder(folder, name.trim()) }
+                }
+            },
+            onDismiss = { folderToRename = null },
+        )
+    }
+
+    folderToDelete?.let { folder ->
+        ConfirmDialog(
+            title = stringResource(R.string.bookmarks_folder_delete_confirm_title),
+            text = stringResource(R.string.bookmarks_folder_delete_confirm_text),
+            onConfirm = {
+                folderToDelete = null
+                scope.launch { repo.deleteFolder(folder) }
+            },
+            onDismiss = { folderToDelete = null },
         )
     }
 }

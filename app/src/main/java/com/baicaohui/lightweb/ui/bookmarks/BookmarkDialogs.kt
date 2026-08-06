@@ -1,9 +1,6 @@
 package com.baicaohui.lightweb.ui.bookmarks
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -17,54 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.baicaohui.lightweb.R
-
-@Composable
-fun BookmarkEditDialog(
-    initialTitle: String,
-    initialUrl: String,
-    confirmLabel: String,
-    onConfirm: (title: String, url: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var title by remember { mutableStateOf(initialTitle) }
-    var url by remember { mutableStateOf(initialUrl) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(confirmLabel) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.bookmarks_title_label)) },
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.bookmarks_url_label)) },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(title.trim(), url.trim()) },
-                enabled = url.isNotBlank(),
-            ) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.bookmarks_cancel))
-            }
-        },
-    )
-}
 
 @Composable
 fun TextInputDialog(

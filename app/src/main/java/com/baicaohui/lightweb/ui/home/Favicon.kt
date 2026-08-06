@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.baicaohui.lightweb.browser.UrlSecurity
+import java.io.File
 
 @Composable
 fun Favicon(
@@ -27,18 +28,21 @@ fun Favicon(
     title: String,
     size: Dp = 40.dp,
     color: Long? = null,
+    iconUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val host = remember(url) { UrlSecurity.extractHost(url) }
     val bgColor = color?.let { Color(it) } ?: MaterialTheme.colorScheme.primaryContainer
+    val model: Any? = iconUrl?.let { File(it) }
+        ?: host?.let { "https://$it/favicon.ico" }
     Box(
         modifier = modifier.size(size).clip(CircleShape).background(bgColor),
         contentAlignment = Alignment.Center,
     ) {
-        if (host != null) {
+        if (model != null) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data("https://$host/favicon.ico")
+                    .data(model)
                     .crossfade(true)
                     .build(),
                 contentDescription = null,

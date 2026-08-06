@@ -44,11 +44,15 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
+    // Compose UI 1.8+ 修复了 “Dispatching key event while focus system is invalidated”
+    // 崩溃（android-review 3365297）；2025.07.00 对应 ui 1.8.3 / material3 1.3.2。
+    val composeBom = platform("androidx.compose:compose-bom:2025.07.00")
     implementation(composeBom)
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")

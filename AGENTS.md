@@ -39,4 +39,4 @@
 - release 产物为 `app-release-unsigned.apk`（约 1.8MB）；上架/装机前需配置 `signingConfigs` 签名
 - 版本号：`versionCode=1 / versionName=0.1.0`（发布前按需递增）
 - 真机冒烟清单见各里程碑计划文档验收项
-- 单测 43 个用例全绿（`GRADLE_USER_HOME=D:\gradle-home` 前提下）
+- 单测 134 个用例全绿（`GRADLE_USER_HOME=D:\gradle-home` 前提下）

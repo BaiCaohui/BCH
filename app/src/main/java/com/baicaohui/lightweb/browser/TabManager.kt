@@ -12,15 +12,25 @@ data class Tab(
     val title: String = "",
     val status: TabStatus = TabStatus.EMPTY,
     val progress: Int = 0,
+    val readerMode: Boolean = false,
+    val readerOffline: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )
 
-class TabManager {
+class TabManager(initialIncognito: Boolean = false) {
     private val _tabs = MutableStateFlow<List<Tab>>(emptyList())
     val tabs: StateFlow<List<Tab>> = _tabs.asStateFlow()
 
     private val _currentId = MutableStateFlow<Long?>(null)
     val currentId: StateFlow<Long?> = _currentId.asStateFlow()
+
+    private val _incognito = MutableStateFlow(initialIncognito)
+    val incognito: StateFlow<Boolean> = _incognito.asStateFlow()
+
+    private data class Stack(val tabs: List<Tab>, val currentId: Long?)
+
+    private var normalStack: Stack? = null
+    private var incognitoStack: Stack? = null
 
     private val accessOrder = ArrayDeque<Long>()
     private var nextId = 1L
@@ -63,6 +73,38 @@ class TabManager {
         }
     }
 
+    /**
+     * 进入无痕模式：保留普通标签栈，切换到全新的无痕空标签。
+     * 已处于无痕模式时仅确保存在一个无痕标签。
+     */
+    fun enterIncognito(): Tab {
+        if (_incognito.value) return current ?: newTab("")
+        normalStack = Stack(_tabs.value, _currentId.value)
+        _tabs.value = emptyList()
+        _currentId.value = null
+        _incognito.value = true
+        incognitoStack = null
+        return newTab("")
+    }
+
+    /** 退出无痕模式：丢弃无痕栈，恢复进入前的普通标签栈。 */
+    fun exitIncognito() {
+        if (!_incognito.value) return
+        incognitoStack = null
+        _incognito.value = false
+        val normal = normalStack
+        _tabs.value = normal?.tabs ?: emptyList()
+        _currentId.value = normal?.currentId
+        normalStack = null
+    }
+
+    /** 当前栈与另一栈的所有标签 id，供 WebView 保活使用。 */
+    fun allTabIds(): Set<Long> = buildSet {
+        _tabs.value.forEach { add(it.id) }
+        normalStack?.tabs?.forEach { add(it.id) }
+        incognitoStack?.tabs?.forEach { add(it.id) }
+    }
+
     fun snapshots(): List<TabSnapshot> = _tabs.value.map {
         TabSnapshot(
             id = it.id,
@@ -74,6 +116,9 @@ class TabManager {
     }
 
     fun restore(snapshots: List<TabSnapshot>) {
+        normalStack = null
+        incognitoStack = null
+        _incognito.value = false
         if (snapshots.isEmpty()) return
         val restored = snapshots.map {
             Tab(

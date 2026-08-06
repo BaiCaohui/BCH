@@ -1,13 +1,18 @@
 package com.baicaohui.lightweb.ui.browser
 
 import android.webkit.SslErrorHandler
+import android.webkit.SafeBrowsingResponse
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabManager
 import com.baicaohui.lightweb.browser.TabStatus
 import com.baicaohui.lightweb.browser.UrlSecurity
 import com.baicaohui.lightweb.data.repo.HistoryRecorder
+import com.baicaohui.lightweb.data.prefs.SearchRecorder
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +22,7 @@ import kotlinx.coroutines.launch
 class BrowserViewModel(
     private val tabManager: TabManager,
     private val historyRecorder: HistoryRecorder,
+    private val searchRecorder: SearchRecorder,
 ) : ViewModel() {
 
     val tabs: StateFlow<List<Tab>> = tabManager.tabs
@@ -35,10 +41,10 @@ class BrowserViewModel(
         val input = raw.trim()
         if (input.isEmpty()) return
         val normalized = UrlSecurity.normalize(input)
-        val url = if (UrlSecurity.isSafeUrl(normalized)) {
-            normalized
-        } else {
-            UrlSecurity.toSearchUrl(input, searchTemplate)
+        val isSearch = !UrlSecurity.isSafeUrl(normalized)
+        val url = if (isSearch) UrlSecurity.toSearchUrl(input, searchTemplate) else normalized
+        if (isSearch) {
+            viewModelScope.launch { searchRecorder.record(input) }
         }
         val existing = tabManager.currentId.value?.takeIf { id ->
             tabManager.tabs.value.any { it.id == id }
@@ -56,7 +62,13 @@ class BrowserViewModel(
     fun onProgress(tabId: Long, progress: Int) = tabManager.update(tabId) { it.copy(progress = progress) }
 
     fun onPageStarted(tabId: Long, url: String) = tabManager.update(tabId) {
-        it.copy(url = url, status = TabStatus.LOADING, progress = 10)
+        it.copy(
+            url = url,
+            status = TabStatus.LOADING,
+            progress = 10,
+            readerMode = false,
+            readerOffline = false,
+        )
     }
 
     fun onPageFinished(tabId: Long, url: String) {
@@ -64,7 +76,9 @@ class BrowserViewModel(
             it.copy(url = url, status = TabStatus.READY, progress = 100)
         }
         val title = tabManager.tabs.value.firstOrNull { it.id == tabId }?.title.orEmpty()
-        viewModelScope.launch { historyRecorder.record(url, title) }
+        if (!tabManager.incognito.value) {
+            viewModelScope.launch { historyRecorder.record(url, title) }
+        }
     }
 
     fun onTitle(tabId: Long, title: String) = tabManager.update(tabId) { it.copy(title = title) }
@@ -81,8 +95,27 @@ class BrowserViewModel(
     fun onSslError(url: String, handler: SslErrorHandler) =
         emit(BrowserEvent.SslError(url, handler))
 
+    fun onSafeBrowsingHit(url: String, threatType: Int, handler: SafeBrowsingResponse) =
+        emit(BrowserEvent.SafeBrowsing(url, threatType, handler))
+
     fun onDownload(url: String, userAgent: String, mimeType: String?) =
         emit(BrowserEvent.Download(url, userAgent, mimeType))
+
+    fun toggleReaderMode() {
+        val id = tabManager.currentId.value ?: return
+        val tab = tabManager.tabs.value.firstOrNull { it.id == id } ?: return
+        if (tab.url.isBlank()) return
+        emit(if (tab.readerMode) BrowserEvent.ExitReader else BrowserEvent.EnterReader)
+    }
+
+    fun setReaderMode(tabId: Long, enabled: Boolean) =
+        tabManager.update(tabId) { it.copy(readerMode = enabled) }
+
+    fun setReaderOffline(tabId: Long, enabled: Boolean) =
+        tabManager.update(tabId) { it.copy(readerOffline = enabled) }
+
+    fun onOfflineCacheLoaded(tabId: Long) =
+        tabManager.update(tabId) { it.copy(status = TabStatus.READY, progress = 100) }
 
     private fun updateCurrent(transform: (Tab) -> Tab) {
         tabManager.currentId.value?.let { tabManager.update(it, transform) }
@@ -99,5 +132,20 @@ sealed interface BrowserEvent {
     data class ExternalScheme(val url: String) : BrowserEvent
     data class PermissionRequest(val request: android.webkit.PermissionRequest) : BrowserEvent
     data class SslError(val url: String, val handler: SslErrorHandler) : BrowserEvent
+    data class SafeBrowsing(
+        val url: String,
+        val threatType: Int,
+        val handler: SafeBrowsingResponse,
+    ) : BrowserEvent
     data class Download(val url: String, val userAgent: String, val mimeType: String?) : BrowserEvent
+    data object EnterReader : BrowserEvent
+    data object ExitReader : BrowserEvent
+}
+
+fun browserViewModelFactory(
+    tabManager: TabManager,
+    history: HistoryRecorder,
+    search: SearchRecorder,
+): ViewModelProvider.Factory = viewModelFactory {
+    initializer { BrowserViewModel(tabManager, history, search) }
 }

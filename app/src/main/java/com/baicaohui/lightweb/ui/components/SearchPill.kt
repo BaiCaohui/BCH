@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -23,11 +24,17 @@ fun SearchPill(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
+    val baseModifier = modifier.fillMaxWidth().height(52.dp)
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = if (onFocusChanged != null) {
+            baseModifier.onFocusChanged { onFocusChanged(it.isFocused) }
+        } else {
+            baseModifier
+        },
         shape = RoundedCornerShape(26.dp),
         singleLine = true,
         placeholder = { Text(stringResource(R.string.search_hint)) },

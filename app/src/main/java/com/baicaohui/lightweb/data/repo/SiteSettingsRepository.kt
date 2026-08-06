@@ -17,7 +17,36 @@ class SiteSettingsRepository(private val dao: SiteSettingDao) {
         jsEnabled: Boolean? = null,
         adLevel: String? = null,
         desktopMode: Boolean? = null,
-    ) = dao.upsert(SiteSettingEntity(host = host, jsEnabled = jsEnabled, adLevel = adLevel, desktopMode = desktopMode))
+        safeBrowsing: Boolean? = null,
+        thirdPartyCookies: Boolean? = null,
+        location: Boolean? = null,
+        camera: Boolean? = null,
+        microphone: Boolean? = null,
+        notifications: Boolean? = null,
+        popups: Boolean? = null,
+        autoplay: Boolean? = null,
+        httpsUpgrade: Boolean? = null,
+        clearOnExit: Boolean? = null,
+        antiTracking: Boolean? = null,
+    ) = dao.upsert(
+        SiteSettingEntity(
+            host = host,
+            jsEnabled = jsEnabled,
+            adLevel = adLevel,
+            desktopMode = desktopMode,
+            safeBrowsing = safeBrowsing,
+            thirdPartyCookies = thirdPartyCookies,
+            location = location,
+            camera = camera,
+            microphone = microphone,
+            notifications = notifications,
+            popups = popups,
+            autoplay = autoplay,
+            httpsUpgrade = httpsUpgrade,
+            clearOnExit = clearOnExit,
+            antiTracking = antiTracking,
+        ),
+    )
 
     suspend fun delete(setting: SiteSettingEntity) = dao.delete(setting)
 

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>阅读模式验证文章：白草灰浏览器离线全文缓存测试</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; }
+        header.site { background: #333; color: #fff; padding: 12px 24px; }
+        nav.site { background: #eee; padding: 8px 24px; }
+        nav.site a { margin-right: 16px; }
+        main { max-width: 720px; margin: 0 auto; padding: 24px; }
+        article p { line-height: 1.8; margin-bottom: 16px; }
+        aside { border-left: 3px solid #ccc; padding-left: 16px; color: #666; }
+        .ads { background: #ffd; padding: 8px; margin: 16px 0; text-align: center; }
+        .comments { border-top: 1px solid #ccc; margin-top: 24px; color: #888; }
+        .byline { color: #666; }
+    </style>
+</head>
+<body>
+<header class="site">示例新闻网</header>
+<nav class="site">
+    <a href="/">首页</a>
+    <a href="/tech">科技</a>
+    <a href="/life">生活</a>
+</nav>
+<main>
+    <article>
+        <h1>白草灰浏览器阅读模式与离线全文缓存测试</h1>
+        <p class="byline">作者：BCH 测试组 · 2026-08-06</p>
+        <p>这是一篇用于验证 BCH 浏览器阅读模式与全文离线缓存功能的测试文章。阅读模式应当提取以下正文内容，并过滤掉页面中的导航、侧栏、广告与评论区等噪音元素。</p>
+        <p>阅读模式的核心目标是让用户专注于文章本身。BCH 采用 Mozilla Readability 进行正文提取，在本地 WebView 中原地切换阅读视图，不产生新的历史记录，也不改变当前网址。用户可以通过工具栏三杠菜单中的「阅读模式」开关随时进入或退出。</p>
+        <p>字号调节提供 A− 与 A+ 两个按钮，范围限制在 70% 到 180% 之间；主题支持浅色、米黄与深色三种，选择会保存在站点 localStorage 中，下次打开同一网站时自动沿用。</p>
+        <div class="ads">广告位：这里的内容不应出现在阅读模式中</div>
+        <p>全文离线缓存会在用户进入阅读模式时，把提取到的标题、作者与正文 HTML 保存到本地 Room 数据库。当设备处于离线状态并再次打开同一网址时，浏览器会自动展示缓存中的全文，使用户在没有网络的情况下也能继续阅读。</p>
+        <p>离线缓存页面带有一个「离线缓存内容」徽标，并且同样支持字号与主题调节。无痕模式出于隐私考虑不会写入缓存，也不会读取缓存内容。</p>
+        <p>除了正文提取之外，阅读模式还会保留文章中的链接、图片与引用块，并针对移动端宽度进行排版优化。图片资源本身不会在离线时强制下载，联网后可以正常加载。</p>
+        <p>后续里程碑可以考虑加入目录导航、语音朗读、阅读进度续读以及按站点自动开启阅读模式等功能。当前版本聚焦于最核心的阅读体验闭环：提取、排版、调节、缓存、离线。</p>
+        <p>本文内容用于自动化验证。验证步骤包括：进入阅读模式后确认正文提取成功、字号与主题切换生效、退出后恢复原网页、断网后重新打开网址自动展示离线缓存、无痕模式下不读取缓存。</p>
+        <blockquote>引用块样式：阅读模式中引用内容应有左侧边线并降低对比度。</blockquote>
+        <p>最后一段正文用于确保文章文本量足够，避免 Readability 因内容过短而拒绝提取。阅读模式应当以本文标题作为阅读视图标题，作者与日期作为 byline 显示在标题下方。</p>
+    </article>
+    <aside>侧栏：相关文章推荐区域，不应出现在阅读模式中。</aside>
+    <section class="comments">
+        评论区：用户评论与回复列表，不应出现在阅读模式中。
+    </section>
+</main>
+</body>
+</html>

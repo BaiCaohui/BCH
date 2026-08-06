@@ -48,4 +48,39 @@ data class SiteSettingEntity(
     val jsEnabled: Boolean? = null,
     val adLevel: String? = null,
     val desktopMode: Boolean? = null,
+    val safeBrowsing: Boolean? = null,
+    val thirdPartyCookies: Boolean? = null,
+    val location: Boolean? = null,
+    val camera: Boolean? = null,
+    val microphone: Boolean? = null,
+    val notifications: Boolean? = null,
+    val popups: Boolean? = null,
+    val autoplay: Boolean? = null,
+    val httpsUpgrade: Boolean? = null,
+    val clearOnExit: Boolean? = null,
+    val antiTracking: Boolean? = null,
+)
+
+@Entity(tableName = "downloads")
+data class DownloadEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val url: String,
+    val fileName: String,
+    val mimeType: String? = null,
+    val totalBytes: Long = 0,
+    val downloadedBytes: Long = 0,
+    val status: String = "QUEUED",
+    val destination: String? = null,
+    val userAgent: String = "",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "reader_cache")
+data class ReaderCacheEntity(
+    @PrimaryKey val url: String,
+    val title: String,
+    val byline: String = "",
+    val contentHtml: String,
+    val savedAt: Long = System.currentTimeMillis(),
 )

@@ -5,6 +5,8 @@ import android.content.Context
 class WebViewStore(
     private val adBlocker: AdBlocker,
     private val adLevel: () -> AdLevel,
+    private val trackerBlocker: TrackerBlocker,
+    private val customRules: () -> List<String>,
 ) {
     private val views = mutableMapOf<Long, BrowserWebView>()
     private val loadedUrls = mutableMapOf<Long, String>()
@@ -12,7 +14,16 @@ class WebViewStore(
 
     fun getOrCreate(id: Long, context: Context, callbacks: WebCallbacks): BrowserWebView {
         lastAccess[id] = System.currentTimeMillis()
-        return views.getOrPut(id) { BrowserWebView(context, callbacks, adBlocker, adLevel) }
+        return views.getOrPut(id) {
+            BrowserWebView(
+                context = context,
+                callbacks = callbacks,
+                adBlocker = adBlocker,
+                adLevel = adLevel,
+                trackerBlocker = trackerBlocker,
+                customRules = customRules,
+            )
+        }
     }
 
     fun get(id: Long): BrowserWebView? {
@@ -24,7 +35,8 @@ class WebViewStore(
         if (url.isNullOrBlank()) return
         if (loadedUrls[id] == url) return
         views[id]?.let {
-            it.loadUrl(url)
+            // 显式置空 x-requested-with，防止部分低版本 WebView 仍附带应用包名
+            it.loadUrl(url, mapOf("x-requested-with" to ""))
             loadedUrls[id] = url
         }
     }

@@ -3,6 +3,7 @@ package com.baicaohui.lightweb.data.prefs
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -14,6 +15,7 @@ import com.baicaohui.lightweb.ui.theme.ShapeStyle
 import com.baicaohui.lightweb.ui.theme.ThemeConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
 
 private val Context.themeDataStore by preferencesDataStore(name = "theme")
 
@@ -57,5 +59,11 @@ class ThemePrefs(private val dataStore: DataStore<Preferences>) {
 
     companion object {
         fun create(context: Context): ThemePrefs = ThemePrefs(context.themeDataStore)
+
+        fun createIncognito(context: Context): ThemePrefs = ThemePrefs(
+            PreferenceDataStoreFactory.create {
+                IncognitoPrefsFiles.targetFile(File(context.filesDir, "datastore"), "theme")
+            },
+        )
     }
 }
