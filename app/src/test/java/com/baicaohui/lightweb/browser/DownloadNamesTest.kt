@@ -60,4 +60,36 @@ class DownloadNamesTest {
             DownloadNames.from("https://example.com/", null, null),
         )
     }
+
+    @Test
+    fun `fromTitle uses sanitized title with html extension`() {
+        assertEquals(
+            "测试页面.html",
+            DownloadNames.fromTitle("测试页面", "https://example.com/", "text/html"),
+        )
+    }
+
+    @Test
+    fun `fromTitle sanitizes illegal characters`() {
+        assertEquals(
+            "a_b_c.html",
+            DownloadNames.fromTitle("a/b\\c", "https://example.com/", "text/html"),
+        )
+    }
+
+    @Test
+    fun `fromTitle keeps existing html extension`() {
+        assertEquals(
+            "page.htm",
+            DownloadNames.fromTitle("page.htm", "https://example.com/", "text/html"),
+        )
+    }
+
+    @Test
+    fun `fromTitle falls back to url name when title is blank`() {
+        assertEquals(
+            "article.html",
+            DownloadNames.fromTitle("  ", "https://example.com/article", "text/html"),
+        )
+    }
 }

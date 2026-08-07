@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
@@ -44,6 +45,8 @@ import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.TabStatus
+import com.baicaohui.lightweb.browser.BrowserWebView
+import com.baicaohui.lightweb.browser.DownloadNames
 import com.baicaohui.lightweb.data.prefs.BrowserPrefs
 import com.baicaohui.lightweb.data.prefs.UaMode
 import com.baicaohui.lightweb.ui.browser.BrowserScreen
@@ -156,6 +159,30 @@ fun IncognitoAppRoot(initialUrl: String? = null) {
             onClick = {
                 menuOpen = false
                 screen = SCREEN_DOWNLOADS
+            },
+        ),
+        "download_page" to MoreMenuItem(
+            id = "download_page",
+            label = stringResource(R.string.menu_download_page),
+            icon = Icons.Filled.FileDownload,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                val tab = currentTab ?: return@MoreMenuItem
+                val id = currentId ?: return@MoreMenuItem
+                val url = tab.url
+                val ua = app.webViewStore.get(id)?.settings?.userAgentString
+                    ?: BrowserWebView.ANDROID_UA
+                scope.launch {
+                    app.appDownloadManager.enqueue(
+                        url,
+                        ua,
+                        "text/html",
+                        null,
+                        explicitFileName = DownloadNames.fromTitle(tab.title, url, "text/html"),
+                    )
+                }
+                Toast.makeText(context, R.string.download_started, Toast.LENGTH_SHORT).show()
             },
         ),
         "sniffer" to MoreMenuItem(

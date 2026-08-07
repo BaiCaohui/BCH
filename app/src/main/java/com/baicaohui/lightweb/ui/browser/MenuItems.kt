@@ -5,6 +5,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Radar
@@ -31,6 +34,9 @@ object MenuItems {
         Spec("incognito", R.string.menu_incognito, Icons.Filled.VisibilityOff),
         Spec("ua", R.string.menu_ua, Icons.Filled.Language),
         Spec("downloads", R.string.menu_downloads, Icons.Filled.Download),
+        Spec("download_page", R.string.menu_download_page, Icons.Filled.FileDownload),
+        Spec("cache_page", R.string.menu_cache_page, Icons.Filled.Archive),
+        Spec("cached_pages", R.string.menu_cached_pages, Icons.Filled.Folder),
         Spec("sniffer", R.string.menu_sniffer, Icons.Filled.Radar),
         Spec("console", R.string.nav_console, Icons.Filled.Terminal),
         Spec("add_bookmark", R.string.add_bookmark, Icons.Filled.Add),

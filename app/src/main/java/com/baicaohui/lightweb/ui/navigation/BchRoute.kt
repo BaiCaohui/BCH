@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Radar
@@ -42,6 +43,7 @@ enum class BchRoute(
     DOWNLOADS("downloads", R.string.nav_downloads, Icons.Filled.Download, false),
     CONSOLE("console", R.string.nav_console, Icons.Filled.Terminal, false),
     SNIFFER("sniffer", R.string.menu_sniffer, Icons.Filled.Radar, false),
+    CACHED_PAGES("cachedPages", R.string.menu_cached_pages, Icons.Filled.Folder, false),
 }
 
 /** M1 用到的工具栏图标，集中声明避免散落 import。 */

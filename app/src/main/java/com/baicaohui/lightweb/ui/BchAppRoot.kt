@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
@@ -53,6 +56,11 @@ import com.baicaohui.lightweb.IncognitoActivity
 import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
 import com.baicaohui.lightweb.browser.TabStatus
+import com.baicaohui.lightweb.browser.BrowserWebView
+import com.baicaohui.lightweb.browser.DownloadNames
+import com.baicaohui.lightweb.browser.PageHtmlCapture
+import com.baicaohui.lightweb.browser.UrlSecurity
+import com.baicaohui.lightweb.data.db.CachedPageEntity
 import com.baicaohui.lightweb.data.prefs.BrowserPrefs
 import com.baicaohui.lightweb.data.prefs.UaMode
 import com.baicaohui.lightweb.ui.navigation.BchIcons
@@ -64,6 +72,7 @@ import com.baicaohui.lightweb.ui.browser.BrowserViewModel
 import com.baicaohui.lightweb.ui.browser.browserViewModelFactory
 import com.baicaohui.lightweb.ui.bookmarks.BookmarksScreen
 import com.baicaohui.lightweb.ui.bookmarks.AddBookmarkDialog
+import com.baicaohui.lightweb.ui.cache.CachedPagesScreen
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.components.TabCountIcon
 import com.baicaohui.lightweb.ui.console.ConsoleScreen
@@ -187,6 +196,78 @@ fun BchAppRoot() {
             onClick = {
                 menuOpen = false
                 navigateTo(BchRoute.DOWNLOADS.route)
+            },
+        ),
+        "download_page" to MoreMenuItem(
+            id = "download_page",
+            label = stringResource(R.string.menu_download_page),
+            icon = Icons.Filled.FileDownload,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                val tab = currentTab ?: return@MoreMenuItem
+                val id = currentTabId ?: return@MoreMenuItem
+                val url = tab.url
+                val ua = app.webViewStore.get(id)?.settings?.userAgentString
+                    ?: BrowserWebView.ANDROID_UA
+                scope.launch {
+                    app.appDownloadManager.enqueue(
+                        url,
+                        ua,
+                        "text/html",
+                        null,
+                        explicitFileName = DownloadNames.fromTitle(tab.title, url, "text/html"),
+                    )
+                }
+                Toast.makeText(context, R.string.download_started, Toast.LENGTH_SHORT).show()
+            },
+        ),
+        "cache_page" to MoreMenuItem(
+            id = "cache_page",
+            label = stringResource(R.string.menu_cache_page),
+            icon = Icons.Filled.Archive,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                val tab = currentTab ?: return@MoreMenuItem
+                val id = currentTabId ?: return@MoreMenuItem
+                val wv = app.webViewStore.get(id) ?: return@MoreMenuItem
+                wv.evaluateJavascript(PageHtmlCapture.outerHtmlScript()) { raw ->
+                    val html = PageHtmlCapture.parseHtml(raw)
+                    if (html.isBlank()) {
+                        Toast.makeText(
+                            context,
+                            R.string.cache_page_save_failed,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        scope.launch {
+                            app.cachedPageRepository.addPage(
+                                title = tab.title.ifBlank {
+                                    UrlSecurity.extractHost(tab.url) ?: tab.url
+                                },
+                                url = tab.url,
+                                folderId = null,
+                                iconUrl = pageIcons[id],
+                                html = html,
+                            )
+                            Toast.makeText(
+                                context,
+                                R.string.cache_page_saved,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                }
+            },
+        ),
+        "cached_pages" to MoreMenuItem(
+            id = "cached_pages",
+            label = stringResource(R.string.menu_cached_pages),
+            icon = Icons.Filled.Folder,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.CACHED_PAGES.route)
             },
         ),
         "sniffer" to MoreMenuItem(
@@ -346,6 +427,7 @@ fun BchAppRoot() {
             composable(BchRoute.BROWSER.route) {
                 BrowserScreen(
                     initialUrl = app.pendingUrl.also { app.pendingUrl = null },
+                    cachedPage = app.pendingCachedPage.also { app.pendingCachedPage = null },
                     sharedViewModel = browserViewModel,
                 )
             }
@@ -419,6 +501,19 @@ fun BchAppRoot() {
                 ResourceSniffScreen(
                     tabId = currentTabId,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(BchRoute.CACHED_PAGES.route) {
+                CachedPagesScreen(
+                    onOpenCache = { entity: CachedPageEntity ->
+                        app.pendingCachedPage = entity
+                        app.tabManager.newTab(entity.url)
+                        navController.navigate(BchRoute.BROWSER.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                 )
             }
         }

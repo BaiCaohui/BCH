@@ -23,6 +23,7 @@ import com.baicaohui.lightweb.browser.TrackerBlocker
 import com.baicaohui.lightweb.browser.WebViewStore
 import com.baicaohui.lightweb.browser.AdLevel
 import com.baicaohui.lightweb.data.db.AppDatabase
+import com.baicaohui.lightweb.data.db.CachedPageEntity
 import com.baicaohui.lightweb.data.prefs.BrowserPrefs
 import com.baicaohui.lightweb.data.prefs.BrowserPrefsStore
 import com.baicaohui.lightweb.data.prefs.DownloadLocation
@@ -31,6 +32,7 @@ import com.baicaohui.lightweb.data.prefs.IncognitoPrefsFiles
 import com.baicaohui.lightweb.data.prefs.RecentSearchStore
 import com.baicaohui.lightweb.data.prefs.ThemePrefs
 import com.baicaohui.lightweb.data.repo.BookmarkRepository
+import com.baicaohui.lightweb.data.repo.CachedPageRepository
 import com.baicaohui.lightweb.data.repo.DownloadRepository
 import com.baicaohui.lightweb.data.repo.HistoryRepository
 import com.baicaohui.lightweb.data.repo.ReaderCacheRepository
@@ -112,6 +114,13 @@ class BchApp : Application() {
     val siteSettingsRepository by lazy { SiteSettingsRepository(database.siteSettingDao()) }
     val downloadRepository by lazy { DownloadRepository(database.downloadDao()) }
     val readerCacheRepository by lazy { ReaderCacheRepository(database.readerCacheDao()) }
+    val cachedPageRepository by lazy {
+        CachedPageRepository(database.cachedPageDao(), database.cachedPageFolderDao())
+    }
+
+    /** 从缓存管理页点开缓存网页时，待浏览器加载的缓存条目（消费一次后置空）。 */
+    @Volatile
+    var pendingCachedPage: CachedPageEntity? = null
 
     /** 阅读模式使用的本地 Readability.js（Apache-2.0，随 APK 打包，不访问网络）。 */
     val readabilityJs: String by lazy {

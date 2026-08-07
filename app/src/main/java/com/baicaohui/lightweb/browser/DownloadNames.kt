@@ -19,6 +19,14 @@ object DownloadNames {
         return extensionFor(mimeType)?.let { "download.$it" } ?: "download"
     }
 
+    /** 下载当前网页时按页面标题生成文件名，标题为空时回退到 URL 推导。 */
+    fun fromTitle(title: String, url: String, mimeType: String?): String {
+        val cleaned = ILLEGAL.replace(title, "_").trim(' ', '.')
+        if (cleaned.isBlank()) return from(url, null, mimeType)
+        val ext = cleaned.substringAfterLast('.', "").lowercase()
+        return if (ext == "html" || ext == "htm") cleaned else "$cleaned.html"
+    }
+
     private fun parseContentDisposition(disposition: String?): String? {
         if (disposition.isNullOrBlank()) return null
         val star = Regex("""filename\*=UTF-8''([^;]+)""", RegexOption.IGNORE_CASE).find(disposition)

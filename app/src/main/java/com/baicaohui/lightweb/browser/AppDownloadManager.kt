@@ -47,9 +47,10 @@ class AppDownloadManager(
         userAgent: String,
         mimeType: String?,
         contentDisposition: String?,
+        explicitFileName: String? = null,
     ) {
         val dir = stagingDir().apply { mkdirs() }
-        val fileName = DownloadNames.from(url, contentDisposition, mimeType)
+        val fileName = explicitFileName ?: DownloadNames.from(url, contentDisposition, mimeType)
         val file = uniqueFile(dir, fileName)
         val now = System.currentTimeMillis()
         val id = store.insert(

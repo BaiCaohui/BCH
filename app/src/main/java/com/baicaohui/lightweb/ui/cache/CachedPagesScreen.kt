@@ -1,10 +1,9 @@
-package com.baicaohui.lightweb.ui.bookmarks
+package com.baicaohui.lightweb.ui.cache
 
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,18 +15,23 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,72 +50,40 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.baicaohui.lightweb.BchApp
 import com.baicaohui.lightweb.R
-import com.baicaohui.lightweb.data.db.BookmarkEntity
-import com.baicaohui.lightweb.data.db.FolderEntity
+import com.baicaohui.lightweb.data.db.CachedPageEntity
+import com.baicaohui.lightweb.data.db.CachedPageFolderEntity
+import com.baicaohui.lightweb.ui.bookmarks.ConfirmDialog
+import com.baicaohui.lightweb.ui.bookmarks.TextInputDialog
 import com.baicaohui.lightweb.ui.components.PlaceholderScreen
 import com.baicaohui.lightweb.ui.home.Favicon
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
+fun CachedPagesScreen(onOpenCache: (CachedPageEntity) -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as BchApp
-    val repo = app.bookmarkRepository
+    val repo = app.cachedPageRepository
     val scope = rememberCoroutineScope()
 
     val folders by repo.folders.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedFolderId by remember { mutableStateOf<Long?>(null) }
-    val bookmarks by remember(selectedFolderId) {
-        if (selectedFolderId == null) repo.allBookmarks else repo.bookmarks(selectedFolderId)
+    val pages by remember(selectedFolderId) {
+        if (selectedFolderId == null) repo.allPages else repo.pages(selectedFolderId)
     }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var selectionMode by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<Long>() }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<BookmarkEntity?>(null) }
+    var itemMenu by remember { mutableStateOf<CachedPageEntity?>(null) }
+    var moveTargets by remember { mutableStateOf<List<CachedPageEntity>?>(null) }
     var showFolderDialog by remember { mutableStateOf(false) }
     var showFolderManage by remember { mutableStateOf(false) }
+    var folderToRename by remember { mutableStateOf<CachedPageFolderEntity?>(null) }
+    var folderToDelete by remember { mutableStateOf<CachedPageFolderEntity?>(null) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
-    var itemMenu by remember { mutableStateOf<BookmarkEntity?>(null) }
-    var moveTargets by remember { mutableStateOf<List<BookmarkEntity>?>(null) }
-    var folderToRename by remember { mutableStateOf<FolderEntity?>(null) }
-    var folderToDelete by remember { mutableStateOf<FolderEntity?>(null) }
 
     fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val text = runCatching {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                }.getOrNull()
-                if (text.isNullOrBlank()) {
-                    toast(context.getString(R.string.bookmarks_import_failed))
-                } else {
-                    val count = repo.importHtml(text)
-                    toast(context.getString(R.string.bookmarks_imported, count))
-                }
-            }
-        }
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/html"),
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val html = repo.exportHtml()
-                runCatching {
-                    context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(html) }
-                }
-                toast(context.getString(R.string.bookmarks_exported))
-            }
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
@@ -120,41 +92,41 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.bookmarks_title),
+                    text = stringResource(R.string.cached_pages_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
                 if (selectionMode) {
                     if (selectedIds.isNotEmpty()) {
                         TextButton(onClick = {
-                            moveTargets = bookmarks.filter { it.id in selectedIds }
+                            moveTargets = pages.filter { it.id in selectedIds }
                             selectedIds.clear()
                             selectionMode = false
                         }) {
-                            Text(stringResource(R.string.bookmarks_move))
+                            Text(stringResource(R.string.cached_pages_move))
                         }
                     }
                     TextButton(onClick = {
                         val idsToDelete = selectedIds.toList()
                         if (idsToDelete.isNotEmpty()) {
                             scope.launch {
-                                bookmarks.filter { it.id in idsToDelete }.forEach { repo.deleteBookmark(it) }
+                                pages.filter { it.id in idsToDelete }.forEach { repo.deletePage(it) }
                             }
                         }
                         selectedIds.clear()
                         selectionMode = false
                     }) {
-                        Text(stringResource(R.string.bookmarks_delete_selected))
+                        Text(stringResource(R.string.cached_pages_delete_selected))
                     }
                     TextButton(onClick = {
                         selectedIds.clear()
                         selectionMode = false
                     }) {
-                        Text(stringResource(R.string.bookmarks_cancel))
+                        Text(stringResource(R.string.cached_pages_cancel))
                     }
                 } else {
                     TextButton(onClick = { selectionMode = true }) {
-                        Text(stringResource(R.string.bookmarks_select))
+                        Text(stringResource(R.string.cached_pages_select))
                     }
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
@@ -162,20 +134,12 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.bookmarks_add_folder)) },
+                                text = { Text(stringResource(R.string.cached_pages_add_folder)) },
                                 onClick = { menuOpen = false; showFolderDialog = true },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.bookmarks_manage_folders)) },
+                                text = { Text(stringResource(R.string.cached_pages_manage_folders)) },
                                 onClick = { menuOpen = false; showFolderManage = true },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.bookmarks_import)) },
-                                onClick = { menuOpen = false; importLauncher.launch(arrayOf("text/html", "text/plain")) },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.bookmarks_export)) },
-                                onClick = { menuOpen = false; exportLauncher.launch("bookmarks.html") },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.bookmarks_clear)) },
@@ -206,129 +170,79 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
                 }
             }
 
-            if (bookmarks.isEmpty()) {
-                PlaceholderScreen(text = stringResource(R.string.empty_bookmarks))
+            if (pages.isEmpty()) {
+                PlaceholderScreen(text = stringResource(R.string.cached_pages_empty))
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(bookmarks, key = { it.id }) { bookmark ->
+                    items(pages, key = { it.id }) { page ->
                         ListItem(
                             modifier = Modifier.combinedClickable(
                                 onClick = {
                                     if (selectionMode) {
-                                        if (bookmark.id in selectedIds) selectedIds.remove(bookmark.id)
-                                        else selectedIds.add(bookmark.id)
+                                        if (page.id in selectedIds) selectedIds.remove(page.id)
+                                        else selectedIds.add(page.id)
                                     } else {
-                                        onOpenUrl(bookmark.url)
+                                        onOpenCache(page)
                                     }
                                 },
-                                onLongClick = { if (!selectionMode) itemMenu = bookmark },
+                                onLongClick = { if (!selectionMode) itemMenu = page },
                             ),
                             leadingContent = {
                                 if (selectionMode) {
                                     Checkbox(
-                                        checked = bookmark.id in selectedIds,
+                                        checked = page.id in selectedIds,
                                         onCheckedChange = {
-                                            if (bookmark.id in selectedIds) selectedIds.remove(bookmark.id)
-                                            else selectedIds.add(bookmark.id)
+                                            if (page.id in selectedIds) selectedIds.remove(page.id)
+                                            else selectedIds.add(page.id)
                                         },
                                     )
                                 } else {
                                     Favicon(
-                                        url = bookmark.url,
-                                        title = bookmark.title,
-                                        iconUrl = bookmark.iconUrl,
+                                        url = page.url,
+                                        title = page.title,
+                                        iconUrl = page.iconUrl,
                                         size = 40.dp,
                                     )
                                 }
                             },
                             headlineContent = {
-                                Text(bookmark.title.ifBlank { bookmark.url }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    page.title.ifBlank { page.url },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             },
                             supportingContent = {
-                                Text(bookmark.url, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(page.url, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             },
                         )
                     }
                 }
             }
         }
-
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.bookmarks_add))
-        }
     }
 
-    if (showAddDialog) {
-        AddBookmarkDialog(
-            initialTitle = "",
-            initialUrl = "",
-            initialIconUrl = null,
-            initialFolderId = selectedFolderId,
-            folders = folders,
-            confirmLabel = stringResource(R.string.bookmarks_add),
-            onConfirm = { title, url, folderId, iconUrl ->
-                showAddDialog = false
-                if (url.isNotBlank()) {
-                    scope.launch {
-                        repo.addBookmark(title.ifBlank { url }, url, folderId, iconUrl)
-                    }
-                }
-            },
-            onDismiss = { showAddDialog = false },
-        )
-    }
-
-    editing?.let { bookmark ->
-        AddBookmarkDialog(
-            initialTitle = bookmark.title,
-            initialUrl = bookmark.url,
-            initialIconUrl = bookmark.iconUrl,
-            initialFolderId = bookmark.folderId,
-            folders = folders,
-            confirmLabel = stringResource(R.string.bookmarks_edit),
-            onConfirm = { title, url, folderId, iconUrl ->
-                editing = null
-                if (url.isNotBlank()) {
-                    scope.launch {
-                        repo.updateBookmark(
-                            bookmark.copy(
-                                title = title.ifBlank { url },
-                                url = url,
-                                folderId = folderId,
-                                iconUrl = iconUrl,
-                            ),
-                        )
-                    }
-                }
-            },
-            onDismiss = { editing = null },
-        )
-    }
-
-    itemMenu?.let { bookmark ->
+    itemMenu?.let { page ->
         DropdownMenu(expanded = true, onDismissRequest = { itemMenu = null }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.bookmarks_edit)) },
+                text = { Text(stringResource(R.string.cached_pages_open)) },
                 onClick = {
                     itemMenu = null
-                    editing = bookmark
+                    onOpenCache(page)
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.bookmarks_delete)) },
+                text = { Text(stringResource(R.string.cached_pages_move)) },
                 onClick = {
                     itemMenu = null
-                    scope.launch { repo.deleteBookmark(bookmark) }
+                    moveTargets = listOf(page)
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.bookmarks_move)) },
+                text = { Text(stringResource(R.string.cached_pages_delete)) },
                 onClick = {
                     itemMenu = null
-                    moveTargets = listOf(bookmark)
+                    scope.launch { repo.deletePage(page) }
                 },
             )
         }
@@ -336,14 +250,14 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
 
     if (showFolderDialog) {
         TextInputDialog(
-            title = stringResource(R.string.bookmarks_add_folder),
-            confirmLabel = stringResource(R.string.bookmarks_add_folder),
+            title = stringResource(R.string.cached_pages_add_folder),
+            confirmLabel = stringResource(R.string.cached_pages_add_folder),
             onConfirm = { name ->
                 showFolderDialog = false
                 if (name.isNotBlank()) {
                     scope.launch {
                         repo.addFolder(name)
-                        toast(context.getString(R.string.bookmarks_folder_created))
+                        toast(context.getString(R.string.cached_pages_folder_created))
                     }
                 }
             },
@@ -353,8 +267,8 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
 
     if (showClearConfirm) {
         ConfirmDialog(
-            title = stringResource(R.string.bookmarks_confirm_clear_title),
-            text = stringResource(R.string.bookmarks_confirm_clear_text),
+            title = stringResource(R.string.cached_pages_confirm_clear_title),
+            text = stringResource(R.string.cached_pages_confirm_clear_text),
             onConfirm = {
                 showClearConfirm = false
                 scope.launch { repo.clearAll() }
@@ -364,22 +278,22 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
     }
 
     moveTargets?.let { targets ->
-        FolderPickerDialog(
+        CacheFolderPickerDialog(
             folders = folders,
             selectedFolderId = null,
             onSelect = { folderId, _ ->
                 moveTargets = null
                 scope.launch {
-                    targets.forEach { repo.updateBookmark(it.copy(folderId = folderId)) }
+                    targets.forEach { repo.updatePage(it.copy(folderId = folderId)) }
                 }
-                toast(context.getString(R.string.bookmarks_moved))
+                toast(context.getString(R.string.cached_pages_moved))
             },
             onDismiss = { moveTargets = null },
         )
     }
 
     if (showFolderManage) {
-        FolderManageDialog(
+        CacheFolderManageDialog(
             folders = folders,
             onRename = { folder ->
                 showFolderManage = false
@@ -395,8 +309,8 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
 
     folderToRename?.let { folder ->
         TextInputDialog(
-            title = stringResource(R.string.bookmarks_rename),
-            confirmLabel = stringResource(R.string.bookmarks_rename),
+            title = stringResource(R.string.cached_pages_rename),
+            confirmLabel = stringResource(R.string.cached_pages_rename),
             initial = folder.name,
             onConfirm = { name ->
                 folderToRename = null
@@ -410,8 +324,8 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
 
     folderToDelete?.let { folder ->
         ConfirmDialog(
-            title = stringResource(R.string.bookmarks_folder_delete_confirm_title),
-            text = stringResource(R.string.bookmarks_folder_delete_confirm_text),
+            title = stringResource(R.string.cached_pages_folder_delete_confirm_title),
+            text = stringResource(R.string.cached_pages_folder_delete_confirm_text),
             onConfirm = {
                 folderToDelete = null
                 scope.launch { repo.deleteFolder(folder) }
@@ -419,4 +333,129 @@ fun BookmarksScreen(onOpenUrl: (String) -> Unit) {
             onDismiss = { folderToDelete = null },
         )
     }
+}
+
+@Composable
+private fun CacheFolderPickerDialog(
+    folders: List<CachedPageFolderEntity>,
+    selectedFolderId: Long?,
+    onSelect: (folderId: Long?, folderName: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext as BchApp
+    val scope = rememberCoroutineScope()
+    var selected by remember { mutableStateOf(selectedFolderId) }
+    var newName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.cached_pages_move)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.cached_pages_default_folder)) },
+                    leadingContent = {
+                        RadioButton(
+                            selected = selected == null,
+                            onClick = { selected = null },
+                        )
+                    },
+                    modifier = Modifier.clickable { selected = null },
+                )
+                folders.forEach { folder ->
+                    ListItem(
+                        headlineContent = { Text(folder.name) },
+                        leadingContent = {
+                            RadioButton(
+                                selected = selected == folder.id,
+                                onClick = { selected = folder.id },
+                            )
+                        },
+                        modifier = Modifier.clickable { selected = folder.id },
+                    )
+                }
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.cached_pages_new_folder_hint)) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (newName.isNotBlank()) {
+                    val name = newName.trim()
+                    scope.launch {
+                        val id = app.cachedPageRepository.addFolder(name)
+                        onSelect(id, name)
+                    }
+                } else {
+                    val name = selected?.let { id -> folders.firstOrNull { it.id == id }?.name }
+                        ?: context.getString(R.string.cached_pages_default_folder)
+                    onSelect(selected, name)
+                }
+            }) {
+                Text(stringResource(R.string.dialog_allow))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.bookmarks_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun CacheFolderManageDialog(
+    folders: List<CachedPageFolderEntity>,
+    onRename: (CachedPageFolderEntity) -> Unit,
+    onDelete: (CachedPageFolderEntity) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.cached_pages_manage_folders)) },
+        text = {
+            if (folders.isEmpty()) {
+                Text(stringResource(R.string.cached_pages_empty))
+            } else {
+                Column {
+                    folders.forEach { folder ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = folder.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { onRename(folder) }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Edit,
+                                    contentDescription = stringResource(R.string.cached_pages_rename),
+                                )
+                            }
+                            IconButton(onClick = { onDelete(folder) }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Delete,
+                                    contentDescription = stringResource(R.string.cached_pages_folder_delete),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dialog_cancel))
+            }
+        },
+    )
 }

@@ -84,3 +84,21 @@ data class ReaderCacheEntity(
     val contentHtml: String,
     val savedAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(tableName = "cached_page_folders")
+data class CachedPageFolderEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "cached_pages")
+data class CachedPageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val folderId: Long? = null,
+    val title: String,
+    val url: String,
+    val iconUrl: String? = null,
+    val html: String,
+    val savedAt: Long = System.currentTimeMillis(),
+)

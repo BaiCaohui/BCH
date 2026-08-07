@@ -163,3 +163,51 @@ interface ReaderCacheDao {
     @Query("DELETE FROM reader_cache")
     suspend fun clear()
 }
+
+@Dao
+interface CachedPageFolderDao {
+    @Query("DELETE FROM cached_page_folders")
+    suspend fun clear()
+
+    @Query("SELECT * FROM cached_page_folders ORDER BY createdAt")
+    fun observe(): Flow<List<CachedPageFolderEntity>>
+
+    @Insert
+    suspend fun insert(folder: CachedPageFolderEntity): Long
+
+    @Update
+    suspend fun update(folder: CachedPageFolderEntity)
+
+    @Delete
+    suspend fun delete(folder: CachedPageFolderEntity)
+}
+
+@Dao
+interface CachedPageDao {
+    @Query("SELECT * FROM cached_pages ORDER BY folderId, savedAt DESC")
+    fun observeAll(): Flow<List<CachedPageEntity>>
+
+    @Query("SELECT * FROM cached_pages WHERE folderId IS NULL ORDER BY savedAt DESC")
+    fun observeRoot(): Flow<List<CachedPageEntity>>
+
+    @Query("SELECT * FROM cached_pages WHERE folderId = :folderId ORDER BY savedAt DESC")
+    fun observeByFolder(folderId: Long): Flow<List<CachedPageEntity>>
+
+    @Query("SELECT * FROM cached_pages WHERE url = :url LIMIT 1")
+    suspend fun findByUrl(url: String): CachedPageEntity?
+
+    @Insert
+    suspend fun insert(page: CachedPageEntity): Long
+
+    @Update
+    suspend fun update(page: CachedPageEntity)
+
+    @Delete
+    suspend fun delete(page: CachedPageEntity)
+
+    @Query("DELETE FROM cached_pages WHERE folderId = :folderId")
+    suspend fun deleteByFolder(folderId: Long)
+
+    @Query("DELETE FROM cached_pages")
+    suspend fun clear()
+}

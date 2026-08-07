@@ -83,6 +83,7 @@ import com.baicaohui.lightweb.browser.UrlSecurity
 import com.baicaohui.lightweb.browser.SafeBrowsingThreats
 import com.baicaohui.lightweb.browser.WebCallbacks
 import com.baicaohui.lightweb.data.db.ReaderCacheEntity
+import com.baicaohui.lightweb.data.db.CachedPageEntity
 import com.baicaohui.lightweb.data.prefs.ToolbarPosition
 import com.baicaohui.lightweb.data.prefs.DownloadMode
 import com.baicaohui.lightweb.util.BookmarkIconStore
@@ -130,6 +131,7 @@ private data class ImageMenuState(
 @Composable
 fun BrowserScreen(
     initialUrl: String? = null,
+    cachedPage: CachedPageEntity? = null,
     sharedViewModel: BrowserViewModel? = null,
 ) {
     val context = LocalContext.current
@@ -157,6 +159,7 @@ fun BrowserScreen(
     var pendingGeolocation by remember { mutableStateOf<GeolocationPrompt?>(null) }
     var pendingPopup by remember { mutableStateOf<String?>(null) }
     var pendingHttpsBlock by remember { mutableStateOf<String?>(null) }
+    var cachePending by remember { mutableStateOf(cachedPage) }
     var textMenu by remember { mutableStateOf<SelectionInfo?>(null) }
     var linkMenu by remember { mutableStateOf<LinkMenuState?>(null) }
     var imageMenu by remember { mutableStateOf<ImageMenuState?>(null) }
@@ -829,6 +832,17 @@ fun BrowserScreen(
                                 if (url.isBlank()) return@launch
                                 if (oldKey != null && oldKey != wv.appliedSettingsKey) {
                                     wv.reload()
+                                } else if (cachePending != null && cachePending?.url == url) {
+                                    val entity = cachePending!!
+                                    cachePending = null
+                                    wv.loadDataWithBaseURL(
+                                        entity.url,
+                                        entity.html,
+                                        "text/html",
+                                        "UTF-8",
+                                        entity.url,
+                                    )
+                                    webViewStore.markLoaded(tab.id, url)
                                 } else {
                                     webViewStore.ensureLoaded(tab.id, url)
                                 }
