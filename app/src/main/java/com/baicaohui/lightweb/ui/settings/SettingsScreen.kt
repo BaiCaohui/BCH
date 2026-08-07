@@ -23,6 +23,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit) {
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(16.dp),
         )
+        DefaultBrowserSettingItem()
         listOf(
             R.string.settings_appearance to BchRoute.APPEARANCE.route,
             R.string.settings_home to BchRoute.HOME_EDIT.route,

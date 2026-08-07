@@ -113,6 +113,10 @@
     <string name="settings_browsing">浏览</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_site_settings">站点设置</string>
+    <string name="settings_default_browser">设置为默认浏览器</string>
+    <string name="settings_default_browser_status_checking">正在检测…</string>
+    <string name="settings_default_browser_status_default">当前已是默认浏览器</string>
+    <string name="settings_default_browser_status_not_default">当前不是默认浏览器</string>
     <string name="settings_about">关于</string>
     <string name="appearance_presets">预设色板</string>
     <string name="appearance_custom">自定义颜色</string>
