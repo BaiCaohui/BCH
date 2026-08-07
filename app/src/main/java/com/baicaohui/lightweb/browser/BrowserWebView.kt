@@ -3,6 +3,9 @@ package com.baicaohui.lightweb.browser
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.WebSettings
@@ -25,6 +28,18 @@ class BrowserWebView(
 
     /** 用户触摸/滑动网页时的回调（用于编辑态失焦退出）。 */
     var onUserInteract: (() -> Unit)? = null
+
+    var onLongPressLink: ((url: String, x: Float, y: Float) -> Unit)? = null
+
+    var onLongPressImage: ((url: String) -> Unit)? = null
+
+    var onTextSelection: ((x: Float, y: Float) -> Unit)? = null
+
+    val resourceSniffing = ResourceSniffController()
+
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private var longPressHandledByListener = false
 
     /** 最近一次实际应用到本 WebView 的设置指纹，用于检测 UA/站点设置变化后是否需要重载。 */
     var appliedSettingsKey: String? = null
@@ -83,6 +98,7 @@ class BrowserWebView(
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     .resolveActivity(context.packageManager) != null
             },
+            onResourceRequest = { url -> resourceSniffing.add(url, url) },
         )
         webChromeClient = BchWebChromeClient(callbacks)
         setOnTouchListener { _, event ->
@@ -91,6 +107,40 @@ class BrowserWebView(
             }
             false
         }
+        isLongClickable = true
+        setOnLongClickListener {
+            val hit = hitTestResult
+            when (hit.type) {
+                WebView.HitTestResult.SRC_ANCHOR_TYPE -> {
+                    hit.extra?.takeIf { it.isNotBlank() }?.let {
+                        onLongPressLink?.invoke(it, lastTouchX, lastTouchY)
+                    }
+                    true
+                }
+                WebView.HitTestResult.IMAGE_TYPE,
+                WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE -> {
+                    hit.extra?.takeIf { it.isNotBlank() }?.let {
+                        onLongPressImage?.invoke(it)
+                    }
+                    true
+                }
+                WebView.HitTestResult.EDIT_TEXT_TYPE -> false
+                else -> {
+                    longPressHandledByListener = true
+                    onTextSelection?.invoke(lastTouchX, lastTouchY)
+                    true
+                }
+            }
+        }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            lastTouchX = event.x
+            lastTouchY = event.y
+            longPressHandledByListener = false
+        }
+        return super.onTouchEvent(event)
     }
 
     fun applySiteSettings(url: String, prefs: BrowserPrefs, site: SiteSettingEntity?) {
@@ -110,6 +160,64 @@ class BrowserWebView(
     fun bypassHttpsUpgrade(url: String) {
         upgradingHttpUrl = url
         loadUrl(url, mapOf("x-requested-with" to ""))
+    }
+
+    fun startResourceSniffing() = resourceSniffing.start()
+
+    fun stopResourceSniffing() = resourceSniffing.stop()
+
+    fun clearSniffedResources() = resourceSniffing.clear()
+
+    fun scanPageResources() {
+        val base = url ?: return
+        evaluateJavascript(ResourceSniffer.domScanScript()) { raw ->
+            resourceSniffing.addDomResult(raw, base)
+        }
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback?): ActionMode? =
+        interceptActionMode(callback, ActionMode.TYPE_FLOATING)
+
+    override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? =
+        interceptActionMode(callback, type)
+
+    private fun interceptActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? {
+        if (callback == null) return null
+        if (type != ActionMode.TYPE_FLOATING) return super.startActionMode(callback, type)
+        if (hitTestResult.type == WebView.HitTestResult.UNKNOWN_TYPE) {
+            if (!longPressHandledByListener) {
+                onTextSelection?.invoke(lastTouchX, lastTouchY)
+            }
+            return super.startActionMode(SilentActionModeCallback(callback, this), type)
+        }
+        return super.startActionMode(callback, type)
+    }
+
+    private class SilentActionModeCallback(
+        private val delegate: ActionMode.Callback,
+        private val view: BrowserWebView,
+    ) : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+            delegate.onCreateActionMode(mode, menu)
+            clearMenu(mode)
+            view.postDelayed({ clearMenu(mode) }, 150)
+            view.postDelayed({ clearMenu(mode) }, 500)
+            return true
+        }
+
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
+            clearMenu(mode)
+            return delegate.onPrepareActionMode(mode, menu)
+        }
+
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean =
+            delegate.onActionItemClicked(mode, item)
+
+        override fun onDestroyActionMode(mode: ActionMode) = delegate.onDestroyActionMode(mode)
+
+        private fun clearMenu(mode: ActionMode) {
+            mode.menu.clear()
+        }
     }
 
     companion object {

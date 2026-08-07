@@ -130,6 +130,9 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<DownloadEntity>>
 
+    @Query("SELECT * FROM downloads WHERE id = :id LIMIT 1")
+    suspend fun get(id: Long): DownloadEntity?
+
     @Insert
     suspend fun insert(entity: DownloadEntity): Long
 

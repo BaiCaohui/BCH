@@ -1,6 +1,9 @@
 package com.baicaohui.lightweb.ui.browser
 
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Bitmap
 import android.Manifest
 import android.net.Uri
@@ -12,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -40,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -50,20 +55,27 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.baicaohui.lightweb.BchApp
+import com.baicaohui.lightweb.IncognitoActivity
 import com.baicaohui.lightweb.NavigationState
 import com.baicaohui.lightweb.R
+import com.baicaohui.lightweb.browser.BrowserWebView
+import com.baicaohui.lightweb.browser.DownloadFormat
 import com.baicaohui.lightweb.browser.DownloadHandler
 import com.baicaohui.lightweb.browser.DownloadRisk
 import com.baicaohui.lightweb.browser.DownloadRiskPolicy
 import com.baicaohui.lightweb.browser.DownloadNames
 import com.baicaohui.lightweb.browser.HttpsMode
 import com.baicaohui.lightweb.browser.HttpsPolicy
+import com.baicaohui.lightweb.browser.HttpDownloader
 import com.baicaohui.lightweb.browser.NotificationPolicy
+import com.baicaohui.lightweb.browser.PageContextMenus
 import com.baicaohui.lightweb.browser.PageCapture
 import com.baicaohui.lightweb.browser.PermissionDecision
 import com.baicaohui.lightweb.browser.PermissionMapping
 import com.baicaohui.lightweb.browser.PermissionKind
 import com.baicaohui.lightweb.browser.ReaderModeController
+import com.baicaohui.lightweb.browser.ResourceSniffer
+import com.baicaohui.lightweb.browser.SelectionInfo
 import com.baicaohui.lightweb.browser.SitePermissionPolicy
 import com.baicaohui.lightweb.browser.Tab
 import com.baicaohui.lightweb.browser.TabStatus
@@ -76,11 +88,13 @@ import com.baicaohui.lightweb.data.prefs.DownloadMode
 import com.baicaohui.lightweb.util.BookmarkIconStore
 import com.baicaohui.lightweb.ui.theme.DarkMode
 import com.baicaohui.lightweb.ui.theme.ThemeConfig
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import com.baicaohui.lightweb.ui.components.ErrorPage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 
 private const val SEARCH_TEMPLATE = "https://www.bing.com/search?q=%s"
 
@@ -95,11 +109,22 @@ private data class DownloadRequest(
     val userAgent: String,
     val mimeType: String?,
     val contentDisposition: String?,
+    val sizeBytes: Long? = null,
 )
 
 private data class GeolocationPrompt(
     val origin: String,
     val callback: GeolocationPermissions.Callback,
+)
+
+private data class LinkMenuState(
+    val url: String,
+    val text: String,
+)
+
+private data class ImageMenuState(
+    val url: String,
+    val name: String,
 )
 
 @Composable
@@ -132,12 +157,16 @@ fun BrowserScreen(
     var pendingGeolocation by remember { mutableStateOf<GeolocationPrompt?>(null) }
     var pendingPopup by remember { mutableStateOf<String?>(null) }
     var pendingHttpsBlock by remember { mutableStateOf<String?>(null) }
+    var textMenu by remember { mutableStateOf<SelectionInfo?>(null) }
+    var linkMenu by remember { mutableStateOf<LinkMenuState?>(null) }
+    var imageMenu by remember { mutableStateOf<ImageMenuState?>(null) }
 
     val recentSearches by app.recentSearchStore.recent.collectAsStateWithLifecycle(initialValue = emptyList())
     val visibleRecentSearches = if (incognito) emptyList() else recentSearches
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val clipboard = LocalClipboardManager.current
+    val density = LocalDensity.current.density
 
     val downloadHandler = remember { DownloadHandler(context) }
     val webViewStore = app.webViewStore
@@ -169,14 +198,132 @@ fun BrowserScreen(
         if (app.currentBrowserPrefs.downloadMode == DownloadMode.SYSTEM) {
             downloadHandler.start(request.url, request.userAgent, request.mimeType)
         } else {
-            app.appDownloadManager.enqueue(
-                request.url,
-                request.userAgent,
-                request.mimeType,
-                request.contentDisposition,
-            )
+            scope.launch {
+                app.appDownloadManager.enqueue(
+                    request.url,
+                    request.userAgent,
+                    request.mimeType,
+                    request.contentDisposition,
+                )
+            }
         }
         Toast.makeText(context, R.string.download_started, Toast.LENGTH_SHORT).show()
+    }
+
+    fun currentWv(): BrowserWebView? =
+        viewModel.currentId.value?.let { webViewStore.get(it) }
+
+    fun copySelectionText() {
+        val wv = currentWv() ?: return
+        wv.evaluateJavascript(PageContextMenus.selectionTextScript()) { raw ->
+            val text = PageContextMenus.parseText(raw)
+            if (text.isNotBlank()) {
+                clipboard.setText(AnnotatedString(text))
+                Toast.makeText(context, R.string.context_copied, Toast.LENGTH_SHORT).show()
+            }
+            textMenu = null
+        }
+    }
+
+    fun selectAllText() {
+        val wv = currentWv() ?: return
+        wv.evaluateJavascript(PageContextMenus.selectAllScript()) {
+            wv.evaluateJavascript(PageContextMenus.selectionInfoScript()) { raw ->
+                textMenu = PageContextMenus.parseSelectionInfo(raw)
+            }
+        }
+    }
+
+    fun searchSelectionInNewTab() {
+        val wv = currentWv() ?: return
+        wv.evaluateJavascript(PageContextMenus.selectionTextScript()) { raw ->
+            val text = PageContextMenus.parseText(raw)
+            if (text.isNotBlank()) {
+                app.tabManager.newTab(UrlSecurity.toSearchUrl(text, browserPrefs.searchTemplate))
+            }
+            textMenu = null
+        }
+    }
+
+    fun openInNewTab(url: String) {
+        app.tabManager.newTab(url)
+    }
+
+    fun openInIncognito(url: String) {
+        context.startActivity(
+            Intent(context, IncognitoActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(IncognitoActivity.EXTRA_URL, url),
+        )
+    }
+
+    fun copyText(text: String, toastRes: Int) {
+        if (text.isNotBlank()) {
+            clipboard.setText(AnnotatedString(text))
+            Toast.makeText(context, toastRes, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun downloadFromMenu(url: String) {
+        val request = DownloadRequest(
+            url = url,
+            userAgent = currentWv()?.settings?.userAgentString ?: BrowserWebView.ANDROID_UA,
+            mimeType = null,
+            contentDisposition = null,
+        )
+        pendingDownload = request
+        scope.launch(Dispatchers.IO) {
+            val size = HttpDownloader.contentLength(url, request.userAgent)
+            withContext(Dispatchers.Main) {
+                pendingDownload = request.copy(sizeBytes = size)
+            }
+        }
+    }
+
+    fun shareLink(url: String) {
+        runCatching {
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, url)
+                    },
+                    context.getString(R.string.context_share_title),
+                ),
+            )
+        }
+    }
+
+    fun copyImage(url: String, name: String) {
+        val ua = currentWv()?.settings?.userAgentString ?: BrowserWebView.ANDROID_UA
+        scope.launch(Dispatchers.IO) {
+            val dir = File(context.filesDir, "clipboard").apply { mkdirs() }
+            val file = File(dir, name.replace(Regex("""[\\/:*?"<>|]"""), "_"))
+            try {
+                file.outputStream().use { out ->
+                    HttpDownloader.download(url, ua, out, onProgress = { _, _ -> })
+                }
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file,
+                )
+                val clip = ClipData.newUri(context.contentResolver, "image", uri)
+                withContext(Dispatchers.Main) {
+                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                        .setPrimaryClip(clip)
+                    Toast.makeText(context, R.string.context_image_copied, Toast.LENGTH_SHORT).show()
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        R.string.context_image_copy_failed,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        }
     }
 
     fun startEdit() {
@@ -218,6 +365,9 @@ fun BrowserScreen(
         override fun onProgress(progress: Int) = viewModel.onProgress(tabId, progress)
 
         override fun onPageStarted(url: String) {
+            textMenu = null
+            linkMenu = null
+            imageMenu = null
             if (isReaderInternalNavigation(url)) return
             viewModel.onPageStarted(tabId, url)
             app.pageIcons.update { it - tabId }
@@ -338,12 +488,19 @@ fun BrowserScreen(
                     webViewStore.get(viewModel.currentId.value ?: return@collect)?.reload()
                 is BrowserEvent.Navigate -> Unit
                 is BrowserEvent.Download -> {
-                    pendingDownload = DownloadRequest(
+                    val request = DownloadRequest(
                         url = event.url,
                         userAgent = event.userAgent,
                         mimeType = event.mimeType,
                         contentDisposition = null,
                     )
+                    pendingDownload = request
+                    scope.launch(Dispatchers.IO) {
+                        val size = HttpDownloader.contentLength(event.url, event.userAgent)
+                        withContext(Dispatchers.Main) {
+                            pendingDownload = request.copy(sizeBytes = size)
+                        }
+                    }
                 }
                 is BrowserEvent.ExternalScheme -> pendingExternal = event.url
                 is BrowserEvent.PermissionRequest -> pendingPermission = event.request
@@ -415,6 +572,9 @@ fun BrowserScreen(
 
     LaunchedEffect(activeTab?.id) {
         addressText = activeTab?.url.orEmpty()
+        textMenu = null
+        linkMenu = null
+        imageMenu = null
         currentId?.let { webViewStore.get(it) }
         val activeIds = app.tabManager.allTabIds()
         webViewStore.trim(activeIds, keepId = currentId, limit = 8)
@@ -530,6 +690,7 @@ fun BrowserScreen(
     val canGoBack = currentWebView?.canGoBack() == true
     BackHandler(enabled = canGoBack) { currentWebView?.goBack() }
     BackHandler(enabled = editing) { exitEdit() }
+    BackHandler(enabled = textMenu != null) { textMenu = null }
 
     val showStartPage = activeTab == null ||
         (activeTab.status == TabStatus.EMPTY && activeTab.url.isBlank())
@@ -643,6 +804,19 @@ fun BrowserScreen(
                         },
                         update = { wv ->
                             wv.onUserInteract = { exitEdit() }
+                            wv.onLongPressLink = { url, x, y ->
+                                wv.evaluateJavascript(PageContextMenus.linkTextScript(x, y)) { raw ->
+                                    linkMenu = LinkMenuState(url, PageContextMenus.parseText(raw))
+                                }
+                            }
+                            wv.onLongPressImage = { url ->
+                                imageMenu = ImageMenuState(url, ResourceSniffer.nameFor(url))
+                            }
+                            wv.onTextSelection = { x, y ->
+                                wv.evaluateJavascript(PageContextMenus.selectionInfoOrSelectAtScript(x, y)) { raw ->
+                                    textMenu = PageContextMenus.parseSelectionInfo(raw)
+                                }
+                            }
                             val url = tab.url
                             scope.launch {
                                 val host = UrlSecurity.extractHost(url)
@@ -794,6 +968,17 @@ fun BrowserScreen(
                                 request.url,
                             ),
                         )
+                        if (request.sizeBytes != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.file_size,
+                                    DownloadFormat.formatBytes(request.sizeBytes),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (risky) {
                             Spacer(Modifier.height(8.dp))
                             Text(
@@ -946,6 +1131,69 @@ fun BrowserScreen(
                         Text(stringResource(R.string.dialog_cancel))
                     }
                 },
+            )
+        }
+
+        textMenu?.let { info ->
+            TextSelectionPopup(
+                info = info,
+                density = density,
+                onCopy = ::copySelectionText,
+                onSelectAll = ::selectAllText,
+                onSearch = ::searchSelectionInNewTab,
+                onDismiss = { textMenu = null },
+            )
+        }
+
+        linkMenu?.let { menu ->
+            LinkContextDialog(
+                url = menu.url,
+                linkText = menu.text,
+                onOpenNewTab = {
+                    openInNewTab(menu.url)
+                    linkMenu = null
+                },
+                onOpenIncognito = {
+                    openInIncognito(menu.url)
+                    linkMenu = null
+                },
+                onCopyAddress = {
+                    copyText(menu.url, R.string.context_copied)
+                    linkMenu = null
+                },
+                onCopyText = {
+                    copyText(menu.text, R.string.context_copied)
+                    linkMenu = null
+                },
+                onDownload = {
+                    downloadFromMenu(menu.url)
+                    linkMenu = null
+                },
+                onShare = {
+                    shareLink(menu.url)
+                    linkMenu = null
+                },
+                onDismiss = { linkMenu = null },
+            )
+        }
+
+        imageMenu?.let { menu ->
+            ImageContextDialog(
+                url = menu.url,
+                name = menu.name,
+                onOpenNewTab = {
+                    openInNewTab(menu.url)
+                    imageMenu = null
+                },
+                onCopy = {
+                    copyImage(menu.url, menu.name)
+                    imageMenu = null
+                },
+                onDownload = {
+                    downloadFromMenu(menu.url)
+                    imageMenu = null
+                },
+                onDismiss = { imageMenu = null },
             )
         }
 

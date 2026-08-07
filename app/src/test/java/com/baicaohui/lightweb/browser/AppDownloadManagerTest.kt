@@ -1,8 +1,11 @@
 package com.baicaohui.lightweb.browser
 
+import com.baicaohui.lightweb.data.db.DownloadEntity
+import com.baicaohui.lightweb.data.repo.DownloadStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -17,10 +20,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import com.baicaohui.lightweb.data.db.DownloadEntity
-import com.baicaohui.lightweb.data.repo.DownloadStore
 import java.io.File
-import java.io.OutputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppDownloadManagerTest {
@@ -43,6 +43,9 @@ class AppDownloadManagerTest {
         override suspend fun update(entity: DownloadEntity) {
             entities.value = entities.value.map { if (it.id == entity.id) entity else it }
         }
+
+        override suspend fun get(id: Long): DownloadEntity? =
+            entities.value.firstOrNull { it.id == id }
 
         override suspend fun delete(entity: DownloadEntity) {
             entities.value = entities.value.filterNot { it.id == entity.id }
@@ -67,7 +70,13 @@ class AppDownloadManagerTest {
         store: FakeStore,
         dir: File,
         finalizer: suspend (File, String, String?) -> String = { staged, _, _ -> staged.absolutePath },
-        downloader: suspend (String, String, OutputStream, suspend (Long, Long) -> Unit) -> Long,
+        downloader: suspend (
+            url: String,
+            userAgent: String,
+            file: File,
+            startOffset: Long,
+            onProgress: suspend (Long, Long) -> Unit,
+        ) -> Long,
     ) = AppDownloadManager(
         store = store,
         scope = CoroutineScope(dispatcher),
@@ -80,8 +89,8 @@ class AppDownloadManagerTest {
     fun `enqueue downloads to app dir and marks completed`() = runTest {
         val store = FakeStore()
         val dir = tmp.newFolder("downloads")
-        val manager = newManager(store, dir) { _, _, out, onProgress ->
-            out.write("hello".toByteArray())
+        val manager = newManager(store, dir) { _, _, file, _, onProgress ->
+            file.writeBytes("hello".toByteArray())
             onProgress(5, 5)
             5L
         }
@@ -107,7 +116,7 @@ class AppDownloadManagerTest {
     fun `failed download removes partial file and marks failed`() = runTest {
         val store = FakeStore()
         val dir = tmp.newFolder("downloads")
-        val manager = newManager(store, dir) { _, _, _, _ ->
+        val manager = newManager(store, dir) { _, _, _, _, _ ->
             throw DownloadException("boom")
         }
 
@@ -127,8 +136,9 @@ class AppDownloadManagerTest {
         val manager = newManager(
             store = store,
             dir = dir,
-            downloader = { _, _, out, _ ->
-                out.write("data".toByteArray())
+            downloader = { _, _, file, _, onProgress ->
+                file.writeBytes("data".toByteArray())
+                onProgress(4, 4)
                 4L
             },
             finalizer = { staged, fileName, _ ->
@@ -146,5 +156,102 @@ class AppDownloadManagerTest {
         assertEquals(DownloadStatus.COMPLETED.name, entity.status)
         assertTrue(File(entity.destination!!).exists())
         assertFalse(File(dir, entity.fileName).exists())
+    }
+
+    @Test
+    fun `pause keeps partial file and marks paused`() = runTest {
+        val store = FakeStore()
+        val dir = tmp.newFolder("downloads")
+        val manager = newManager(store, dir) { _, _, file, _, _ ->
+            file.writeBytes("abc".toByteArray())
+            awaitCancellation()
+        }
+
+        manager.enqueue("https://example.com/part.bin", "BCH/1.0", null, null)
+        dispatcher.scheduler.advanceUntilIdle()
+        val id = store.entities.value.single().id
+        assertEquals(DownloadStatus.RUNNING.name, store.entities.value.single().status)
+
+        manager.pause(id)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val entity = store.entities.value.single()
+        assertEquals(DownloadStatus.PAUSED.name, entity.status)
+        assertEquals(3L, entity.downloadedBytes)
+        assertTrue(File(dir, entity.fileName).exists())
+    }
+
+    @Test
+    fun `resume appends to existing partial file`() = runTest {
+        val store = FakeStore()
+        val dir = tmp.newFolder("downloads")
+        val manager = newManager(store, dir) { _, _, file, startOffset, onProgress ->
+            if (startOffset > 0) {
+                file.appendBytes("def".toByteArray())
+                onProgress(6, 6)
+                6L
+            } else {
+                file.writeBytes("abc".toByteArray())
+                awaitCancellation()
+            }
+        }
+
+        manager.enqueue("https://example.com/part.bin", "BCH/1.0", null, null)
+        dispatcher.scheduler.advanceUntilIdle()
+        val id = store.entities.value.single().id
+        manager.pause(id)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(DownloadStatus.PAUSED.name, store.entities.value.single().status)
+
+        manager.resume(id)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val entity = store.entities.value.single()
+        assertEquals(DownloadStatus.COMPLETED.name, entity.status)
+        assertEquals(6L, entity.downloadedBytes)
+        assertEquals("abcdef", File(dir, entity.fileName).readText())
+    }
+
+    @Test
+    fun `pauseAll pauses every running download`() = runTest {
+        val store = FakeStore()
+        val dir = tmp.newFolder("downloads")
+        val manager = newManager(store, dir) { _, _, file, _, _ ->
+            file.writeBytes("x".toByteArray())
+            awaitCancellation()
+        }
+
+        manager.enqueue("https://example.com/1.bin", "BCH/1.0", null, null)
+        manager.enqueue("https://example.com/2.bin", "BCH/1.0", null, null)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, store.entities.value.size)
+
+        manager.pauseAll()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(store.entities.value.all { it.status == DownloadStatus.PAUSED.name })
+    }
+
+    @Test
+    fun `liveProgress reports running progress and clears after pause`() = runTest {
+        val store = FakeStore()
+        val dir = tmp.newFolder("downloads")
+        val manager = newManager(store, dir) { _, _, file, _, onProgress ->
+            file.writeBytes("abc".toByteArray())
+            onProgress(3, 10)
+            awaitCancellation()
+        }
+
+        manager.enqueue("https://example.com/live.bin", "BCH/1.0", null, null)
+        dispatcher.scheduler.advanceUntilIdle()
+        val id = store.entities.value.single().id
+
+        val live = manager.liveProgress.value[id]
+        assertEquals(3L, live?.downloadedBytes)
+        assertEquals(10L, live?.totalBytes)
+
+        manager.pause(id)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertFalse(manager.liveProgress.value.containsKey(id))
     }
 }

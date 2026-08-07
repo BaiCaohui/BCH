@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -81,6 +82,7 @@ import com.baicaohui.lightweb.ui.settings.SettingsScreen
 import com.baicaohui.lightweb.ui.settings.SiteDataScreen
 import com.baicaohui.lightweb.ui.settings.SiteSettingsScreen
 import com.baicaohui.lightweb.ui.settings.ToolbarSettingsScreen
+import com.baicaohui.lightweb.ui.sniffer.ResourceSniffScreen
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 import kotlinx.coroutines.launch
 
@@ -185,6 +187,16 @@ fun BchAppRoot() {
             onClick = {
                 menuOpen = false
                 navigateTo(BchRoute.DOWNLOADS.route)
+            },
+        ),
+        "sniffer" to MoreMenuItem(
+            id = "sniffer",
+            label = stringResource(R.string.menu_sniffer),
+            icon = Icons.Filled.Radar,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                navigateTo(BchRoute.SNIFFER.route)
             },
         ),
         "console" to MoreMenuItem(
@@ -403,6 +415,12 @@ fun BchAppRoot() {
             composable(BchRoute.ABOUT.route) { AboutScreen() }
             composable(BchRoute.DOWNLOADS.route) { DownloadsScreen() }
             composable(BchRoute.CONSOLE.route) { ConsoleScreen() }
+            composable(BchRoute.SNIFFER.route) {
+                ResourceSniffScreen(
+                    tabId = currentTabId,
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
 
         if (menuOpen) {

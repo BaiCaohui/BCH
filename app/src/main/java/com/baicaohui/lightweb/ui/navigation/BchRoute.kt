@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -40,6 +41,7 @@ enum class BchRoute(
     ABOUT("about", R.string.settings_about, null, false),
     DOWNLOADS("downloads", R.string.nav_downloads, Icons.Filled.Download, false),
     CONSOLE("console", R.string.nav_console, Icons.Filled.Terminal, false),
+    SNIFFER("sniffer", R.string.menu_sniffer, Icons.Filled.Radar, false),
 }
 
 /** M1 用到的工具栏图标，集中声明避免散落 import。 */

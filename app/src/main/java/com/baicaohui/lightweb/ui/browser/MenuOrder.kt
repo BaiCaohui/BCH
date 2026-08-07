@@ -13,6 +13,7 @@ object MenuOrder {
         "incognito",
         "ua",
         "downloads",
+        "sniffer",
         "console",
         "add_bookmark",
         "bookmarks",

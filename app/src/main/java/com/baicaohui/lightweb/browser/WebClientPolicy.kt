@@ -44,6 +44,7 @@ class BchWebViewClient(
     private val httpsMode: () -> String,
     private val callbacks: WebCallbacks,
     private val canOpenExternal: (String) -> Boolean,
+    private val onResourceRequest: (String) -> Unit = {},
 ) : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -63,6 +64,7 @@ class BchWebViewClient(
     ): WebResourceResponse? {
         if (request.isForMainFrame) return null
         val url = request.url.toString()
+        onResourceRequest(url)
         val blockedByAds = adBlocker.isBlocked(url, adLevel(), customRules())
         val blockedByTracker = blockTrackers() && trackerBlocker.isTracker(url)
         return if (blockedByAds || blockedByTracker) {

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -56,6 +57,7 @@ import com.baicaohui.lightweb.ui.console.ConsoleScreen
 import com.baicaohui.lightweb.ui.downloads.DownloadsScreen
 import com.baicaohui.lightweb.ui.home.HomeConfig
 import com.baicaohui.lightweb.ui.navigation.BchIcons
+import com.baicaohui.lightweb.ui.sniffer.ResourceSniffScreen
 import com.baicaohui.lightweb.ui.tabs.TabSwitcherScreen
 import kotlinx.coroutines.launch
 
@@ -63,6 +65,7 @@ private const val SCREEN_BROWSER = "browser"
 private const val SCREEN_TABS = "tabs"
 private const val SCREEN_DOWNLOADS = "downloads"
 private const val SCREEN_CONSOLE = "console"
+private const val SCREEN_SNIFFER = "sniffer"
 
 @Composable
 fun IncognitoAppRoot(initialUrl: String? = null) {
@@ -153,6 +156,16 @@ fun IncognitoAppRoot(initialUrl: String? = null) {
             onClick = {
                 menuOpen = false
                 screen = SCREEN_DOWNLOADS
+            },
+        ),
+        "sniffer" to MoreMenuItem(
+            id = "sniffer",
+            label = stringResource(R.string.menu_sniffer),
+            icon = Icons.Filled.Radar,
+            enabled = currentTab?.url?.isNotBlank() == true,
+            onClick = {
+                menuOpen = false
+                screen = SCREEN_SNIFFER
             },
         ),
         "console" to MoreMenuItem(
@@ -266,6 +279,10 @@ fun IncognitoAppRoot(initialUrl: String? = null) {
                 )
                 SCREEN_DOWNLOADS -> DownloadsScreen()
                 SCREEN_CONSOLE -> ConsoleScreen()
+                SCREEN_SNIFFER -> ResourceSniffScreen(
+                    tabId = currentId,
+                    onBack = { goBrowser() },
+                )
                 else -> BrowserScreen(initialUrl = initialUrl, sharedViewModel = browserViewModel)
             }
         }

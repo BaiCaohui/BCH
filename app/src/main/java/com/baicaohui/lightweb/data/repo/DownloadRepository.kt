@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface DownloadStore {
     val downloads: Flow<List<DownloadEntity>>
+    suspend fun get(id: Long): DownloadEntity?
     suspend fun insert(entity: DownloadEntity): Long
     suspend fun update(entity: DownloadEntity)
     suspend fun delete(entity: DownloadEntity)
@@ -14,6 +15,7 @@ interface DownloadStore {
 
 class DownloadRepository(private val dao: DownloadDao) : DownloadStore {
     override val downloads: Flow<List<DownloadEntity>> = dao.observeAll()
+    override suspend fun get(id: Long): DownloadEntity? = dao.get(id)
     override suspend fun insert(entity: DownloadEntity): Long = dao.insert(entity)
     override suspend fun update(entity: DownloadEntity) = dao.update(entity)
     override suspend fun delete(entity: DownloadEntity) = dao.delete(entity)
