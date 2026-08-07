@@ -9,7 +9,10 @@
 - 书签 / 历史 / 快捷拨号 / 站点设置，Room 持久化
 - 阅读模式：Mozilla Readability 本地正文提取、字号/主题调节、全文离线缓存（无痕模式不读写缓存）
 - 无痕模式：独立进程 + 独立 WebView 数据目录，退出即清除
-- 下载管理：内置下载器 / 系统下载器，危险文件（APK/EXE 等）下载前警告
+- 资源嗅探：扫描当前网页视频 / 音频 / 图片资源，展示缩略图、名称与文件大小，一键下载
+- 长按菜单：文字（复制 / 全选 / 新标签页搜索）、链接（打开 / 无痕打开 / 复制 / 下载 / 分享）、图片（打开 / 复制 / 下载）
+- 下载管理：内置下载器 / 系统下载器，危险文件（APK/EXE 等）下载前警告；断点续传、实时进度与速度、暂停 / 继续 / 全部暂停；条目长按可打开 / 分享 / 删除（可选删除源文件），点击条目用默认应用打开
+- 默认浏览器：设置中一键申请成为系统默认浏览器（Android 11+ 系统角色弹窗，旧版本跳转默认应用设置）
 - 隐私与安全：
   - 智能反追踪（拦截已知跨站跟踪器）
   - 站点权限精细控制（位置 / 摄像头 / 麦克风 / 通知 / 弹窗 / 自动播放）
@@ -25,7 +28,7 @@
 ```powershell
 .\gradlew.bat :app:assembleDebug        # Debug APK
 .\gradlew.bat :app:assembleRelease      # Release APK（R8 + 已签名）
-.\gradlew.bat :app:testDebugUnitTest    # 单元测试（189 个用例）
+.\gradlew.bat :app:testDebugUnitTest    # 单元测试（226 个用例）
 ```
 
 产物位于 `app/build/outputs/apk/`；已签名 Release 副本同步到 `release/app-release.apk`。
