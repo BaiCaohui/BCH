@@ -39,8 +39,6 @@
   文件缺失时回退为未签名构建（不会导致构建失败）。
 - 重新运行 `.\gradlew.bat :app:assembleRelease` 即可生成已签名 APK。
 
-发布前按需更新 `versionCode` / `versionName`。请务必妥善保管 `release.jks` 与密码：
-丢失后无法再为已安装用户发布更新。
 
 ## 许可证
 
