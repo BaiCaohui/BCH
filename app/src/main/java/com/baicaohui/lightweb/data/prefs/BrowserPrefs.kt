@@ -30,7 +30,7 @@ data class BrowserPrefs(
     val searchTemplate: String = "https://www.bing.com/search?q=%s",
     val uaMode: String = UaMode.DEFAULT,
     val customUa: String = "",
-    val adLevel: String = "OFF",
+    val adLevel: String = "BASIC",
     val defaultJsEnabled: Boolean = true,
     val safeBrowsing: Boolean = true,
     val thirdPartyCookies: Boolean = false,

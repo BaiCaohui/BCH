@@ -211,3 +211,24 @@ interface CachedPageDao {
     @Query("DELETE FROM cached_pages")
     suspend fun clear()
 }
+
+@Dao
+interface MarkedAdDao {
+    @Query("SELECT * FROM marked_ads ORDER BY createdAt DESC")
+    fun observeAll(): Flow<List<MarkedAdEntity>>
+
+    @Query("SELECT * FROM marked_ads WHERE host = :host ORDER BY createdAt DESC")
+    suspend fun byHost(host: String): List<MarkedAdEntity>
+
+    @Insert
+    suspend fun insert(entity: MarkedAdEntity): Long
+
+    @Update
+    suspend fun update(entity: MarkedAdEntity)
+
+    @Delete
+    suspend fun delete(entity: MarkedAdEntity)
+
+    @Query("DELETE FROM marked_ads")
+    suspend fun clear()
+}

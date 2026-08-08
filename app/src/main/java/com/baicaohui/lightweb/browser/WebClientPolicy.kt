@@ -39,6 +39,7 @@ class BchWebViewClient(
     private val adBlocker: AdBlocker,
     private val adLevel: () -> AdLevel,
     private val customRules: () -> List<String>,
+    private val markedHosts: () -> Set<String> = { emptySet() },
     private val trackerBlocker: TrackerBlocker,
     private val blockTrackers: () -> Boolean,
     private val httpsMode: () -> String,
@@ -65,7 +66,7 @@ class BchWebViewClient(
         if (request.isForMainFrame) return null
         val url = request.url.toString()
         onResourceRequest(url)
-        val blockedByAds = adBlocker.isBlocked(url, adLevel(), customRules())
+        val blockedByAds = adBlocker.isBlocked(url, adLevel(), customRules(), markedHosts())
         val blockedByTracker = blockTrackers() && trackerBlocker.isTracker(url)
         return if (blockedByAds || blockedByTracker) {
             Log.d("BchBlock", "blocked url=$url ads=$blockedByAds tracker=$blockedByTracker")

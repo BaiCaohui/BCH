@@ -7,6 +7,7 @@ class WebViewStore(
     private val adLevel: () -> AdLevel,
     private val trackerBlocker: TrackerBlocker,
     private val customRules: () -> List<String>,
+    private val markedAdHosts: () -> Set<String> = { emptySet() },
 ) {
     private val views = mutableMapOf<Long, BrowserWebView>()
     private val loadedUrls = mutableMapOf<Long, String>()
@@ -22,6 +23,7 @@ class WebViewStore(
                 adLevel = adLevel,
                 trackerBlocker = trackerBlocker,
                 customRules = customRules,
+                markedHosts = markedAdHosts,
             )
         }
     }

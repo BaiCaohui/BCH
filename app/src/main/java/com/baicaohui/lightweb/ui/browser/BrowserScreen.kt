@@ -42,6 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
@@ -69,6 +71,8 @@ import com.baicaohui.lightweb.browser.HttpsPolicy
 import com.baicaohui.lightweb.browser.HttpDownloader
 import com.baicaohui.lightweb.browser.NotificationPolicy
 import com.baicaohui.lightweb.browser.PageContextMenus
+import com.baicaohui.lightweb.browser.PageMarkAd
+import com.baicaohui.lightweb.browser.MarkedAdSelection
 import com.baicaohui.lightweb.browser.PageCapture
 import com.baicaohui.lightweb.browser.PermissionDecision
 import com.baicaohui.lightweb.browser.PermissionMapping
@@ -84,6 +88,7 @@ import com.baicaohui.lightweb.browser.SafeBrowsingThreats
 import com.baicaohui.lightweb.browser.WebCallbacks
 import com.baicaohui.lightweb.data.db.ReaderCacheEntity
 import com.baicaohui.lightweb.data.db.CachedPageEntity
+import com.baicaohui.lightweb.data.db.MarkedAdEntity
 import com.baicaohui.lightweb.data.prefs.ToolbarPosition
 import com.baicaohui.lightweb.data.prefs.DownloadMode
 import com.baicaohui.lightweb.util.BookmarkIconStore
@@ -163,6 +168,12 @@ fun BrowserScreen(
     var textMenu by remember { mutableStateOf<SelectionInfo?>(null) }
     var linkMenu by remember { mutableStateOf<LinkMenuState?>(null) }
     var imageMenu by remember { mutableStateOf<ImageMenuState?>(null) }
+    var markingMode by remember { mutableStateOf(false) }
+    var markRect by remember { mutableStateOf<Rect?>(null) }
+    var markMoveStep by remember { mutableStateOf(1) }
+    var markSelection by remember { mutableStateOf<MarkedAdSelection?>(null) }
+
+    val markAdRequested by app.markAdRequested.collectAsStateWithLifecycle()
 
     val recentSearches by app.recentSearchStore.recent.collectAsStateWithLifecycle(initialValue = emptyList())
     val visibleRecentSearches = if (incognito) emptyList() else recentSearches
@@ -215,6 +226,61 @@ fun BrowserScreen(
 
     fun currentWv(): BrowserWebView? =
         viewModel.currentId.value?.let { webViewStore.get(it) }
+
+    fun identifyMarkAd(pos: Offset, onSuccess: ((MarkedAdSelection) -> Unit)? = null) {
+        val wv = currentWv() ?: return
+        val cssX = pos.x / density
+        val cssY = pos.y / density
+        wv.evaluateJavascript(
+            PageMarkAd.identifyScript(cssX.toDouble(), cssY.toDouble()),
+        ) { raw ->
+            val selection = PageMarkAd.parseSelection(raw)
+            if (!selection.found || selection.selector.isBlank() || selection.width <= 0) {
+                Toast.makeText(context, R.string.mark_ad_failed, Toast.LENGTH_SHORT).show()
+                return@evaluateJavascript
+            }
+            markSelection = selection
+            markRect = Rect(
+                left = selection.left.toFloat() * density,
+                top = selection.top.toFloat() * density,
+                right = (selection.left + selection.width).toFloat() * density,
+                bottom = (selection.top + selection.height).toFloat() * density,
+            )
+            onSuccess?.invoke(selection)
+        }
+    }
+
+    fun saveMarkedAd(selection: MarkedAdSelection) {
+        val tab = activeTab ?: return
+        val pageHost = UrlSecurity.extractHost(tab.url) ?: ""
+        val hosts = selection.urls.mapNotNull { UrlSecurity.extractHost(it) }.distinct()
+        scope.launch {
+            if (pageHost.isNotBlank() && selection.selector.isNotBlank()) {
+                app.markedAdRepository.insert(
+                    MarkedAdEntity(
+                        host = pageHost,
+                        selector = selection.selector,
+                        html = selection.html,
+                        adHosts = hosts.joinToString(","),
+                    ),
+                )
+            }
+            Toast.makeText(context, R.string.mark_ad_done, Toast.LENGTH_SHORT).show()
+        }
+        markingMode = false
+        markRect = null
+        markSelection = null
+    }
+
+    fun confirmMarkAd() {
+        val rect = markRect ?: return
+        val selection = markSelection
+        if (selection != null && selection.found) {
+            saveMarkedAd(selection)
+        } else {
+            identifyMarkAd(rect.center, onSuccess = { saveMarkedAd(it) })
+        }
+    }
 
     fun copySelectionText() {
         val wv = currentWv() ?: return
@@ -410,6 +476,18 @@ fun BrowserScreen(
             if (tabId == viewModel.currentId.value) {
                 scheduleThumbnailCapture(tabId, force = true)
             }
+            val host = UrlSecurity.extractHost(url)
+            if (host != null) {
+                scope.launch {
+                    val rules = app.markedAdRepository.byHost(host)
+                    if (rules.isNotEmpty()) {
+                        webViewStore.get(tabId)?.evaluateJavascript(
+                            PageMarkAd.hideSelectorScript(rules.map { it.selector }),
+                            null,
+                        )
+                    }
+                }
+            }
         }
 
         override fun onTitleChanged(title: String) {
@@ -570,6 +648,17 @@ fun BrowserScreen(
     LaunchedEffect(Unit) {
         if (!initialUrl.isNullOrBlank()) {
             viewModel.submitInput(initialUrl, SEARCH_TEMPLATE)
+        }
+    }
+
+    LaunchedEffect(markAdRequested) {
+        if (markAdRequested && app.markAdRequested.compareAndSet(expect = true, update = false)) {
+            val tab = activeTab
+            if (tab != null && tab.url.isNotBlank() && !incognito) {
+                markingMode = true
+                markRect = null
+                markSelection = null
+            }
         }
     }
 
@@ -851,6 +940,21 @@ fun BrowserScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
+            }
+            if (markingMode) {
+                MarkAdOverlay(
+                    rect = markRect,
+                    moveStep = markMoveStep,
+                    onMoveStepChange = { markMoveStep = it },
+                    onRectChange = { markRect = it },
+                    onIdentify = { pos -> identifyMarkAd(pos) },
+                    onConfirm = { confirmMarkAd() },
+                    onCancel = {
+                        markingMode = false
+                        markRect = null
+                        markSelection = null
+                    },
+                )
             }
             if (showStartPage) {
                 StartPage(

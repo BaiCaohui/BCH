@@ -35,6 +35,7 @@ import com.baicaohui.lightweb.data.repo.BookmarkRepository
 import com.baicaohui.lightweb.data.repo.CachedPageRepository
 import com.baicaohui.lightweb.data.repo.DownloadRepository
 import com.baicaohui.lightweb.data.repo.HistoryRepository
+import com.baicaohui.lightweb.data.repo.MarkedAdRepository
 import com.baicaohui.lightweb.data.repo.ReaderCacheRepository
 import com.baicaohui.lightweb.data.repo.ShortcutRepository
 import com.baicaohui.lightweb.data.repo.SiteSettingsRepository
@@ -117,6 +118,13 @@ class BchApp : Application() {
     val cachedPageRepository by lazy {
         CachedPageRepository(database.cachedPageDao(), database.cachedPageFolderDao())
     }
+    val markedAdRepository by lazy { MarkedAdRepository(database.markedAdDao()) }
+
+    /** 启用中的已标记广告主机，供 WebView 网络层自动屏蔽。 */
+    val enabledMarkedHosts = MutableStateFlow<Set<String>>(emptySet())
+
+    /** 三杠菜单请求进入“标记为广告”模式的一次性标志（消费后复位）。 */
+    val markAdRequested = MutableStateFlow(false)
 
     /** 从缓存管理页点开缓存网页时，待浏览器加载的缓存条目（消费一次后置空）。 */
     @Volatile
@@ -150,6 +158,7 @@ class BchApp : Application() {
             adLevel = { AdLevel.valueOf(currentBrowserPrefs.adLevel) },
             trackerBlocker = trackerBlocker,
             customRules = { currentBrowserPrefs.customAdRules },
+            markedAdHosts = { enabledMarkedHosts.value },
         )
     }
 
@@ -204,6 +213,9 @@ class BchApp : Application() {
             browserPrefsStore.prefs.collect { prefs ->
                 currentBrowserPrefs = prefs
             }
+        }
+        appScope.launch {
+            markedAdRepository.enabledHosts.collect { enabledMarkedHosts.value = it }
         }
         if (!incognitoProcess) {
             appScope.launch {

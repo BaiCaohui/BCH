@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
@@ -39,6 +40,7 @@ object MenuItems {
         Spec("cached_pages", R.string.menu_cached_pages, Icons.Filled.Folder),
         Spec("sniffer", R.string.menu_sniffer, Icons.Filled.Radar),
         Spec("console", R.string.nav_console, Icons.Filled.Terminal),
+        Spec("mark_ad", R.string.menu_mark_ad, Icons.Filled.Crop),
         Spec("add_bookmark", R.string.add_bookmark, Icons.Filled.Add),
         Spec("bookmarks", R.string.nav_bookmarks, Icons.Filled.Star),
         Spec("history", R.string.nav_history, Icons.Filled.DateRange),

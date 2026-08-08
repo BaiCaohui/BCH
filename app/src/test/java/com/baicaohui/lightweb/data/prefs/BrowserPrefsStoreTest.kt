@@ -58,7 +58,7 @@ class BrowserPrefsStoreTest {
         store.update { legacy }
         val prefs = store.prefs.first()
         assertEquals(true, prefs.tabPreviewEnabled)
-        assertEquals(5, prefs.prefsVersion)
+        assertEquals(7, prefs.prefsVersion)
         assertEquals(2, prefs.menuRows)
         assertEquals(DownloadMode.APP, prefs.downloadMode)
         assertEquals(2, prefs.historySuggestionLimit)
@@ -102,7 +102,7 @@ class BrowserPrefsStoreTest {
         store.update { it.copy(prefsVersion = 2) }
         val prefs = store.prefs.first()
         assertEquals(2, prefs.historySuggestionLimit)
-        assertEquals(5, prefs.prefsVersion)
+        assertEquals(7, prefs.prefsVersion)
         assertEquals(DownloadLocation.PUBLIC, prefs.downloadLocation)
     }
 
@@ -136,7 +136,7 @@ class BrowserPrefsStoreTest {
         store.update { it.copy(prefsVersion = 3) }
         val prefs = store.prefs.first()
         assertEquals(DownloadLocation.PUBLIC, prefs.downloadLocation)
-        assertEquals(5, prefs.prefsVersion)
+        assertEquals(7, prefs.prefsVersion)
     }
 
     @Test
@@ -154,6 +154,6 @@ class BrowserPrefsStoreTest {
         }
         val prefs = store.prefs.first()
         assertEquals(DownloadLocation.PUBLIC, prefs.downloadLocation)
-        assertEquals(5, prefs.prefsVersion)
+        assertEquals(7, prefs.prefsVersion)
     }
 }

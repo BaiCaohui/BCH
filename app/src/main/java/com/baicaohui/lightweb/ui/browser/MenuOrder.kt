@@ -18,6 +18,7 @@ object MenuOrder {
         "cached_pages",
         "sniffer",
         "console",
+        "mark_ad",
         "add_bookmark",
         "bookmarks",
         "history",

@@ -35,16 +35,23 @@ object CustomAdRules {
 class AdBlocker(
     private val basicHosts: Set<String>,
     private val strictHosts: Set<String>,
+    private val adguardHosts: Set<String> = emptySet(),
 ) {
+
+    /** 预合并各档位生效的主机集合，避免每次请求时重复拼接。 */
+    private val basicEffective: Set<String> = basicHosts + adguardHosts
+    private val strictEffective: Set<String> = basicHosts + strictHosts + adguardHosts
 
     fun isBlocked(
         url: String,
         level: AdLevel,
         customRules: List<String> = emptyList(),
+        markedHosts: Set<String> = emptySet(),
     ): Boolean {
         val host = UrlSecurity.extractHost(url) ?: return false
+        if (markedHosts.any { it == host || host.endsWith(".$it") }) return true
         if (level != AdLevel.OFF) {
-            val hosts = if (level == AdLevel.STRICT) basicHosts + strictHosts else basicHosts
+            val hosts = if (level == AdLevel.STRICT) strictEffective else basicEffective
             if (hosts.any { it == host || host.endsWith(".$it") }) return true
         }
         return customRules.any { CustomAdRules.matches(url, it) }
@@ -60,6 +67,7 @@ class AdBlocker(
             return AdBlocker(
                 basicHosts = read(R.raw.adblock_basic),
                 strictHosts = read(R.raw.adblock_strict),
+                adguardHosts = read(R.raw.adguard_hosts),
             )
         }
     }

@@ -102,3 +102,14 @@ data class CachedPageEntity(
     val html: String,
     val savedAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(tableName = "marked_ads", indices = [Index(value = ["host"])])
+data class MarkedAdEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val host: String,
+    val selector: String,
+    val html: String = "",
+    val adHosts: String = "",
+    val enabled: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
+)

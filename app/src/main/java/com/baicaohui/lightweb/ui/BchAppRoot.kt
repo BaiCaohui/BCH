@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Folder
@@ -287,6 +288,16 @@ fun BchAppRoot() {
             onClick = {
                 menuOpen = false
                 navigateTo(BchRoute.CONSOLE.route)
+            },
+        ),
+        "mark_ad" to MoreMenuItem(
+            id = "mark_ad",
+            label = stringResource(R.string.menu_mark_ad),
+            icon = Icons.Filled.Crop,
+            enabled = currentTab?.url?.isNotBlank() == true && !app.tabManager.incognito.value,
+            onClick = {
+                menuOpen = false
+                app.markAdRequested.value = true
             },
         ),
         "add_bookmark" to MoreMenuItem(

@@ -22,6 +22,7 @@ class BrowserWebView(
     private val adLevel: () -> AdLevel = { AdLevel.BASIC },
     private val trackerBlocker: TrackerBlocker = TrackerBlocker(emptySet()),
     private val customRules: () -> List<String> = { emptyList() },
+    private val markedHosts: () -> Set<String> = { emptySet() },
     private val blockTrackers: () -> Boolean = { false },
     private val httpsMode: () -> String = { HttpsMode.PREFER },
 ) : WebView(context) {
@@ -89,6 +90,7 @@ class BrowserWebView(
             adBlocker = adBlocker,
             adLevel = { requestAdLevel },
             customRules = customRules,
+            markedHosts = markedHosts,
             trackerBlocker = trackerBlocker,
             blockTrackers = { requestTrackerBlocking },
             httpsMode = { requestHttpsMode },

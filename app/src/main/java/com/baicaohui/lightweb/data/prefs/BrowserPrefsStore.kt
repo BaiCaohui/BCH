@@ -34,42 +34,7 @@ class BrowserPrefsStore(private val dataStore: DataStore<Preferences>) {
     private fun decode(raw: String): BrowserPrefs =
         runCatching { json.decodeFromString<BrowserPrefs>(raw) }.getOrNull() ?: BrowserPrefs.DEFAULT
 
-    /** 旧版本默认关闭标签页预览；一次性迁移为开启，并写入版本号以便后续可被用户手动关闭。 */
-    private fun migrated(prefs: BrowserPrefs): BrowserPrefs =
-        when {
-            prefs.prefsVersion < 1 -> prefs.copy(
-                tabPreviewEnabled = true,
-                menuRows = 2,
-                downloadMode = DownloadMode.APP,
-                historySuggestionLimit = 2,
-                downloadLocation = DownloadLocation.PUBLIC,
-                prefsVersion = 5,
-            )
-            prefs.prefsVersion < 2 -> prefs.copy(
-                menuRows = 2,
-                downloadMode = DownloadMode.APP,
-                historySuggestionLimit = 2,
-                downloadLocation = DownloadLocation.PUBLIC,
-                prefsVersion = 5,
-            )
-            prefs.prefsVersion < 3 -> prefs.copy(
-                historySuggestionLimit = 2,
-                downloadLocation = DownloadLocation.PUBLIC,
-                prefsVersion = 5,
-            )
-            prefs.prefsVersion < 4 -> prefs.copy(
-                downloadLocation = DownloadLocation.PUBLIC,
-                prefsVersion = 5,
-            )
-            prefs.prefsVersion < 5 -> prefs.copy(
-                downloadLocation = DownloadLocation.PUBLIC,
-                prefsVersion = 5,
-            )
-            prefs.prefsVersion < 6 -> prefs.copy(
-                prefsVersion = 6,
-            )
-            else -> prefs
-        }
+    private fun migrated(prefs: BrowserPrefs): BrowserPrefs = BrowserPrefsMigrations.migrate(prefs)
 
     private object Keys {
         val PREFS = stringPreferencesKey("prefs")

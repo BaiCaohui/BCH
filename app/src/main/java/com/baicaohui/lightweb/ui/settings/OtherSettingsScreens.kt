@@ -335,7 +335,10 @@ fun BrowseSettingsScreen() {
         )
         Spacer(Modifier.height(12.dp))
         SectionTitle(stringResource(R.string.search_history_limit))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
             listOf(0, 1, 2, 3, 4, 5).forEach { limit ->
                 FilterChip(
                     selected = prefs.historySuggestionLimit == limit,

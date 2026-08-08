@@ -18,8 +18,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReaderCacheEntity::class,
         CachedPageFolderEntity::class,
         CachedPageEntity::class,
+        MarkedAdEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun readerCacheDao(): ReaderCacheDao
     abstract fun cachedPageFolderDao(): CachedPageFolderDao
     abstract fun cachedPageDao(): CachedPageDao
+    abstract fun markedAdDao(): MarkedAdDao
 
     companion object {
         @Volatile
@@ -123,6 +125,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `marked_ads` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `host` TEXT NOT NULL,
+                        `selector` TEXT NOT NULL,
+                        `adHosts` TEXT NOT NULL,
+                        `enabled` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_marked_ads_host` ON `marked_ads` (`host`)",
+                )
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE marked_ads ADD COLUMN html TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -135,6 +163,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_3_4,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
                 )
                 .build()
                 .also { instance = it }
